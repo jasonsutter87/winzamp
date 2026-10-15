@@ -22,6 +22,22 @@ npm run tauri dev
 
 First launch asks for **System Audio Recording** permission (in dev, macOS attributes it to your terminal/IDE).
 
+## Classic skins (.wsz)
+
+Right-click the main window (or **SKIN**) to pick one of 10 curated skins from
+the [Winamp Skin Museum](https://skins.webamp.org/), load your own `.wsz`, or
+drag one onto the window. Skins download on first use and are cached
+(IndexedDB); they aren't bundled in the repo, as they're their authors' work.
+The classic 275x116 main window is drawn from the skin's sprite sheets at 2x
+(`src/skin.ts`, `src/skinnedPlayer.ts`); missing sheets fall back to base 2.91.
+
+In a skin: ⏮ ▶ ❚❚ ■ ⏭ send system media keys (control YouTube, Spotify, …),
+EQ opens Milkdrop, PL opens karaoke, the clutter-bar **I** identifies the song,
+eject or the top-left button opens the skin menu, clicking the visualizer cycles
+it. The volume and balance sliders (and the mouse wheel, for volume) drive the
+real Windows output volume and left/right channel levels, and follow changes
+made elsewhere. Shuffle and repeat are decorative.
+
 ## Song identification — needed for karaoke on YouTube/radio/Android
 
 YouTube reports the whole video title as the "song" (and the channel as the
@@ -71,5 +87,5 @@ Since macOS 15.4 the MediaRemote daemon answers Now Playing queries only for App
 6. Android build for the car (see above)
 7. Vocal remover (L−R center cancel, then AI stem separation)
 8. Mic pitch scoring (SingStar-style), reusing the Murmur capture path
-9. `.wsz` skin loading (main.bmp, viscolor.txt, etc.)
+9. ~~`.wsz` skin loading (main.bmp, viscolor.txt, etc.)~~
 10. Visualizer fidelity: clean-room behavior spec of the original analyzer's binning and falloff

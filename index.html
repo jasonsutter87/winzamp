@@ -45,8 +45,13 @@
         <button id="milkdrop" class="btn">MILKDROP</button>
         <button id="karaoke" class="btn">🎤</button>
         <button id="identify" class="btn" title="Identify what's playing">🎧</button>
+        <button id="skin-menu" class="btn" title="Skins (or right-click anywhere)">SKIN</button>
         <span class="logo">⚡</span>
       </div>
     </div>
+
+    <!-- Classic-skin mode: the whole main window drawn from a .wsz -->
+    <canvas id="skin" title=""></canvas>
+    <input id="skin-file" type="file" accept=".wsz,.zip" hidden />
   </body>
 </html>

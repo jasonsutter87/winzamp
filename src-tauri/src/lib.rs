@@ -1,6 +1,7 @@
 mod audio;
 mod identify;
 mod shazam;
+mod volume;
 #[cfg(target_os = "macos")]
 mod nowplaying;
 
@@ -63,6 +64,42 @@ fn identify_song(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Press a system media key, so the skin's transport buttons drive whatever
+/// is playing (YouTube, Spotify, ...). `key`: "playpause" | "next" | "prev" | "stop".
+#[tauri::command]
+fn media_key(key: &str) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+        let vk = match key {
+            "playpause" => VK_MEDIA_PLAY_PAUSE,
+            "next" => VK_MEDIA_NEXT_TRACK,
+            "prev" => VK_MEDIA_PREV_TRACK,
+            "stop" => VK_MEDIA_STOP,
+            _ => return Err(format!("unknown media key: {key}")),
+        };
+        let press = |flags| INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT { wVk: vk, wScan: 0, dwFlags: flags, time: 0, dwExtraInfo: 0 },
+            },
+        };
+        let inputs = [press(0), press(KEYEVENTF_KEYUP)];
+        let sent = unsafe {
+            SendInput(inputs.len() as u32, inputs.as_ptr(), std::mem::size_of::<INPUT>() as i32)
+        };
+        if sent as usize != inputs.len() {
+            return Err("SendInput was blocked".into());
+        }
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = key;
+        Err("media keys are only wired up on Windows".into())
+    }
+}
+
 /// Opens (or focuses) the full-screen karaoke window. Async for the same
 /// reason as `open_milkdrop`.
 #[tauri::command]
@@ -93,7 +130,11 @@ pub fn run() {
             now_playing,
             identify_song,
             open_milkdrop,
-            open_karaoke
+            open_karaoke,
+            media_key,
+            volume::get_volume,
+            volume::set_volume,
+            volume::set_balance
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

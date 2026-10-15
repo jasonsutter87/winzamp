@@ -38,6 +38,8 @@ function barEdges(bins: number): number[] {
 
 export class ClassicVis {
   mode: VisMode = "bars";
+  /** Current palette; a skin's viscolor.txt replaces it. */
+  private colors: [number, number, number][] = VISCOLOR;
   private ctx: CanvasRenderingContext2D;
   private img: ImageData;
   private bars = new Float32Array(BARS);
@@ -50,6 +52,11 @@ export class ClassicVis {
     this.img = this.ctx.createImageData(W, H);
   }
 
+  /** Use a skin's 24-color palette, or the default skin's with null. */
+  setPalette(colors: [number, number, number][] | null) {
+    this.colors = colors && colors.length >= 24 ? colors : VISCOLOR;
+  }
+
   draw(frame: Frame) {
     this.clear();
     if (this.mode === "bars") this.drawBars(frame.spec);
@@ -58,7 +65,7 @@ export class ClassicVis {
   }
 
   private px(x: number, y: number, color: number) {
-    const [r, g, b] = VISCOLOR[color];
+    const [r, g, b] = this.colors[color];
     const i = (y * W + x) * 4;
     const d = this.img.data;
     d[i] = r;

@@ -232,3 +232,34 @@ body {
   font-size: 20px;
   filter: drop-shadow(0 0 3px #f0c040);
 }
+
+/* --- classic .wsz skin mode --------------------------------------------- */
+#skin {
+  display: none;
+  position: fixed;
+  inset: 0;
+  width: 550px;
+  height: 232px;
+  image-rendering: pixelated;
+}
+
+body.skinned .player {
+  display: none;
+}
+
+body.skinned #skin {
+  display: block;
+}
+
+body.dropping::after {
+  content: "Drop a .wsz skin";
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font: bold 18px Tahoma, sans-serif;
+  border: 3px dashed #8f8fd8;
+}
