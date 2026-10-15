@@ -10,10 +10,14 @@ export default defineConfig(() => ({
   //
   // 1. prevent Vite from obscuring rust errors
   clearScreen: false,
-  // Two pages: the main player and the Milkdrop window.
+  // Three pages: the main player, the Milkdrop window, and the karaoke window.
   build: {
     rollupOptions: {
-      input: { main: "index.html", milkdrop: "milkdrop.html" },
+      input: {
+        main: "index.html",
+        milkdrop: "milkdrop.html",
+        karaoke: "karaoke.html",
+      },
     },
   },
   // 2. tauri expects a fixed port, fail if that port is not available

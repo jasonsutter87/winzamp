@@ -17,6 +17,7 @@ function cycleVis() {
 $("vis").addEventListener("click", cycleVis);
 $("vis-mode").addEventListener("click", cycleVis);
 $("milkdrop").addEventListener("click", () => invoke("open_milkdrop"));
+$("karaoke").addEventListener("click", () => invoke("open_karaoke"));
 $("close").addEventListener("click", () => getCurrentWindow().close());
 $("minimize").addEventListener("click", () => getCurrentWindow().minimize());
 

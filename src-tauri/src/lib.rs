@@ -23,6 +23,20 @@ fn open_milkdrop(app: AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Opens (or focuses) the full-screen karaoke window.
+#[tauri::command]
+fn open_karaoke(app: AppHandle) -> tauri::Result<()> {
+    if let Some(win) = app.get_webview_window("karaoke") {
+        return win.set_focus();
+    }
+    WebviewWindowBuilder::new(&app, "karaoke", WebviewUrl::App("karaoke.html".into()))
+        .title("WinzAMP — Karaoke")
+        .inner_size(900.0, 560.0)
+        .min_inner_size(480.0, 320.0)
+        .build()?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -33,7 +47,11 @@ pub fn run() {
             nowplaying::start(app.handle().clone());
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![capture_info, open_milkdrop])
+        .invoke_handler(tauri::generate_handler![
+            capture_info,
+            open_milkdrop,
+            open_karaoke
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -78,22 +78,27 @@ body {
   display: flex;
   gap: 12px;
   padding: 12px 14px 8px;
+  align-items: flex-start;
 }
 
 .lcd {
-  position: relative;
-  width: 190px;
+  flex: 0 0 190px;
   height: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px;
+  overflow: hidden;
   background: var(--lcd-bg);
   border: 2px solid #111;
   border-right-color: #777;
   border-bottom-color: #777;
 }
 
-.status {
-  position: absolute;
-  left: 8px;
-  top: 8px;
+.lcd-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 .play-state {
@@ -102,30 +107,28 @@ body {
 }
 
 .time {
-  position: absolute;
-  right: 12px;
-  top: 4px;
   color: var(--lcd-text);
-  font: bold 30px/1 "Courier New", monospace;
+  font: bold 28px/1 "Courier New", monospace;
   letter-spacing: 2px;
   text-shadow: 0 0 6px rgb(0 224 0 / 0.4);
 }
 
 #vis {
-  position: absolute;
-  left: 30px;
-  bottom: 10px;
+  display: block;
   width: 152px;
-  height: 32px;
+  height: 36px;
+  margin: 0 auto;
   image-rendering: pixelated;
   cursor: pointer;
 }
 
 .info {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: hidden;
 }
 
 .marquee {

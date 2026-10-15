@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>WinzAMP — Karaoke</title>
+    <style>
+      :root {
+        --bg: #0a0a16;
+        --dim: #4a4a70;
+        --upcoming: #9aa0d0;
+        --active: #fff;
+        --glow: #35e0ff;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: radial-gradient(120% 90% at 50% 0%, #15153a, var(--bg));
+        color: var(--active);
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #stage {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        flex: 0 0 auto;
+        padding: 16px 28px 8px;
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+      }
+      #track { font-size: 20px; font-weight: 700; }
+      #artist { font-size: 15px; color: var(--upcoming); }
+      #src {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      #scroll {
+        flex: 1 1 auto;
+        position: relative;
+        overflow: hidden;
+        mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent);
+        -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent);
+      }
+      #lines {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        text-align: center;
+        transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        padding: 0 6%;
+      }
+      .line {
+        font-size: 30px;
+        font-weight: 600;
+        line-height: 1.5;
+        color: var(--dim);
+        transition: color 0.25s, transform 0.25s, text-shadow 0.25s;
+      }
+      .line.upcoming { color: var(--upcoming); }
+      .line.active {
+        color: var(--active);
+        transform: scale(1.08);
+        text-shadow: 0 0 22px var(--glow);
+      }
+      #msg {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 12%;
+        font-size: 20px;
+        color: var(--upcoming);
+      }
+      footer {
+        flex: 0 0 auto;
+        height: 4px;
+        background: #1a1a30;
+      }
+      #prog {
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, var(--glow), #7a5cff);
+        transition: width 0.25s linear;
+      }
+    </style>
+    <script type="module" src="/src/karaoke.ts" defer></script>
+  </head>
+  <body>
+    <div id="stage">
+      <header>
+        <span id="track">—</span>
+        <span id="artist"></span>
+        <span id="src"></span>
+      </header>
+      <div id="scroll">
+        <div id="lines"></div>
+        <div id="msg">Play a song anywhere and the lyrics will appear here. 🎤</div>
+      </div>
+      <footer><div id="prog"></div></footer>
+    </div>
+  </body>
+</html>
