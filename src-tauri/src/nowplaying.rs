@@ -9,6 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter};
@@ -26,8 +27,22 @@ pub struct NowPlaying {
     pub rate: f64,
 }
 
-const DYLIB: &str = env!("NOWPLAYING_DYLIB");
-const LOADER: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/bridge/load.pl");
+// Both are embedded so a packaged app (e.g. a .dmg built elsewhere) carries
+// them; the dylib is unpacked to a temp file because perl loads it by path.
+const DYLIB: &[u8] = include_bytes!(env!("NOWPLAYING_DYLIB"));
+const LOADER: &str = include_str!("../bridge/load.pl");
+
+/// Unpack the bridge dylib (once per version) and return its path. Written to
+/// a temp name and renamed, so a half-written file is never loaded.
+fn dylib_path() -> std::io::Result<PathBuf> {
+    let path = std::env::temp_dir().join(format!("winzamp-nowplaying-{}.dylib", env!("CARGO_PKG_VERSION")));
+    if std::fs::read(&path).ok().as_deref() != Some(DYLIB) {
+        let tmp = path.with_extension(format!("{}.tmp", std::process::id()));
+        std::fs::write(&tmp, DYLIB)?;
+        std::fs::rename(&tmp, &path)?;
+    }
+    Ok(path)
+}
 
 /// Last snapshot, so a window opened later (e.g. karaoke) gets the current
 /// track immediately instead of waiting for the next change.
@@ -47,8 +62,9 @@ pub fn start(app: AppHandle) {
 
 fn run(app: &AppHandle) -> anyhow::Result<()> {
     let mut child = Command::new("/usr/bin/perl")
+        .arg("-e")
         .arg(LOADER)
-        .arg(DYLIB)
+        .arg(dylib_path()?)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;

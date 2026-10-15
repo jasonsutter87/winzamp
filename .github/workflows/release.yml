@@ -1,0 +1,60 @@
+# Builds WinzAMP for macOS (.dmg, Apple Silicon + Intel) and Windows
+# (.msi + setup .exe) and attaches them to a draft GitHub Release.
+#
+# Run it by pushing a version tag (git tag v0.2.0 && git push --tags) or from
+# the Actions tab ("Run workflow"). The release stays a draft until you
+# publish it. Builds are unsigned: on macOS, right-click → Open the first time.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # create the draft release and upload the installers
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # __VERSION__ is replaced with the app version from tauri.conf.json.
+          tagName: v__VERSION__
+          releaseName: WinzAMP v__VERSION__
+          releaseBody: |
+            **macOS:** download the `.dmg` for your Mac (`aarch64` = Apple Silicon, `x64` = Intel). The app isn't signed yet, so the first time, right-click WinzAMP → **Open**.
+            **Windows:** run the `-setup.exe` (or the `.msi`); WinzAMP then appears in the Start menu.
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}
