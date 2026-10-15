@@ -9,6 +9,18 @@ fn capture_info() -> Option<audio::CaptureInfo> {
     audio::app_info().lock().unwrap().clone()
 }
 
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn now_playing() -> Option<nowplaying::NowPlaying> {
+    nowplaying::last().lock().unwrap().clone()
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn now_playing() -> Option<()> {
+    None
+}
+
 /// Opens (or focuses) the Milkdrop window.
 #[tauri::command]
 fn open_milkdrop(app: AppHandle) -> tauri::Result<()> {
@@ -49,6 +61,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             capture_info,
+            now_playing,
             open_milkdrop,
             open_karaoke
         ])

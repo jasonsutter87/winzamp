@@ -10,6 +10,7 @@
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
 use tauri::{AppHandle, Emitter};
 
 /// One Now Playing snapshot, as the dylib prints it. Deserialized opaquely and
@@ -27,6 +28,13 @@ pub struct NowPlaying {
 
 const DYLIB: &str = env!("NOWPLAYING_DYLIB");
 const LOADER: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/bridge/load.pl");
+
+/// Last snapshot, so a window opened later (e.g. karaoke) gets the current
+/// track immediately instead of waiting for the next change.
+pub fn last() -> &'static Mutex<Option<NowPlaying>> {
+    static LAST: Mutex<Option<NowPlaying>> = Mutex::new(None);
+    &LAST
+}
 
 pub fn start(app: AppHandle) {
     std::thread::spawn(move || {
@@ -54,6 +62,7 @@ fn run(app: &AppHandle) -> anyhow::Result<()> {
         let line = line?;
         match serde_json::from_str::<NowPlaying>(&line) {
             Ok(np) => {
+                *last().lock().unwrap() = Some(np.clone());
                 let _ = app.emit("nowplaying", np);
             }
             Err(e) => eprintln!("nowplaying bridge: bad line {line:?}: {e}"),

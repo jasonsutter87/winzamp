@@ -1,6 +1,7 @@
 // Karaoke window: listens for Now Playing changes, fetches synced lyrics from
 // LRCLIB, and scrolls them in time with the song. Song position comes from the
 // MediaRemote bridge's elapsed/rate, extrapolated between updates.
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { NowPlaying } from "./frame";
 import { fetchLyricsSmart, type Lyrics } from "./lyrics";
@@ -106,5 +107,13 @@ listen<NowPlaying>("nowplaying", (e) => {
   np = e.payload;
   npAt = performance.now();
   onTrack(np);
+});
+// Pull the current track immediately, in case we opened mid-song.
+invoke<NowPlaying | null>("now_playing").then((info) => {
+  if (info) {
+    np = info;
+    npAt = performance.now();
+    onTrack(info);
+  }
 });
 tick();
