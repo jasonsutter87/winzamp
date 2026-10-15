@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <title>WinzAMP</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <div class="player">
+      <div class="titlebar" data-tauri-drag-region>
+        <span class="grip" data-tauri-drag-region></span>
+        <span class="title" data-tauri-drag-region>WINZAMP</span>
+        <span class="grip" data-tauri-drag-region></span>
+        <button class="tb-btn" id="minimize" title="Minimize">_</button>
+        <button class="tb-btn" id="close" title="Close">×</button>
+      </div>
+
+      <div class="body">
+        <div class="lcd">
+          <div class="status">
+            <span id="play-state" class="play-state">▶</span>
+          </div>
+          <div id="time" class="time">00:00</div>
+          <canvas id="vis" width="76" height="16" title="Click to change visualizer"></canvas>
+        </div>
+
+        <div class="info">
+          <div class="marquee"><span id="marquee-text"></span></div>
+          <div class="specs">
+            <span class="lcd-field"><b id="kbps">PCM</b></span>
+            <span class="label">kbps</span>
+            <span class="lcd-field"><b id="khz">--</b></span>
+            <span class="label">khz</span>
+            <span id="mono" class="ms">mono</span>
+            <span id="stereo" class="ms">stereo</span>
+          </div>
+          <div class="meter"><div id="level" class="level"></div></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="vis-mode" class="btn">VIS: BARS</button>
+        <button id="milkdrop" class="btn">MILKDROP</button>
+        <button class="btn" disabled title="Coming soon">SKIN</button>
+        <span class="logo">⚡</span>
+      </div>
+    </div>
+  </body>
+</html>

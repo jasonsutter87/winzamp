@@ -1,0 +1,231 @@
+/* Homage to the classic 275x116 Winamp main window, drawn at 2x. */
+:root {
+  --chrome-hi: #5a5a78;
+  --chrome: #3b3b52;
+  --chrome-lo: #1c1c2a;
+  --lcd-bg: #000;
+  --lcd-text: #00e000;
+  --lcd-dim: #0a3a0a;
+  --title-text: #d8d8f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 550px;
+  height: 232px;
+  overflow: hidden;
+  background: var(--chrome-lo);
+  font-family: Tahoma, Verdana, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+.player {
+  width: 550px;
+  height: 232px;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--chrome-hi), var(--chrome) 40%, var(--chrome-lo));
+  border: 2px solid #6e6e92;
+  border-right-color: #12121c;
+  border-bottom-color: #12121c;
+}
+
+.titlebar {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 10px;
+  background: linear-gradient(180deg, #4a4a8c, #23234a);
+}
+
+.title {
+  color: var(--title-text);
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 6px;
+  pointer-events: none;
+}
+
+.grip {
+  flex: 1;
+  height: 10px;
+  background: repeating-linear-gradient(180deg, #b8a050 0 2px, transparent 2px 4px);
+  opacity: 0.7;
+}
+
+.tb-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 14px;
+  color: #ccc;
+  background: var(--chrome);
+  border: 1px solid #888;
+  border-right-color: #111;
+  border-bottom-color: #111;
+}
+
+.body {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px 8px;
+}
+
+.lcd {
+  position: relative;
+  width: 190px;
+  height: 88px;
+  background: var(--lcd-bg);
+  border: 2px solid #111;
+  border-right-color: #777;
+  border-bottom-color: #777;
+}
+
+.status {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+}
+
+.play-state {
+  color: var(--lcd-text);
+  font-size: 14px;
+}
+
+.time {
+  position: absolute;
+  right: 12px;
+  top: 4px;
+  color: var(--lcd-text);
+  font: bold 30px/1 "Courier New", monospace;
+  letter-spacing: 2px;
+  text-shadow: 0 0 6px rgb(0 224 0 / 0.4);
+}
+
+#vis {
+  position: absolute;
+  left: 30px;
+  bottom: 10px;
+  width: 152px;
+  height: 32px;
+  image-rendering: pixelated;
+  cursor: pointer;
+}
+
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.marquee {
+  height: 26px;
+  overflow: hidden;
+  white-space: nowrap;
+  background: var(--lcd-bg);
+  border: 2px solid #111;
+  border-right-color: #777;
+  border-bottom-color: #777;
+  color: var(--lcd-text);
+  font: 14px/22px "Courier New", monospace;
+}
+
+#marquee-text {
+  display: inline-block;
+  padding-left: 100%;
+  animation: scroll 14s linear infinite;
+}
+
+@keyframes scroll {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+.specs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #c8c8e0;
+}
+
+.lcd-field {
+  min-width: 34px;
+  padding: 1px 4px;
+  text-align: right;
+  background: var(--lcd-bg);
+  border: 1px solid #111;
+  color: var(--lcd-text);
+  font: bold 12px "Courier New", monospace;
+}
+
+.label {
+  margin-right: 4px;
+}
+
+.ms {
+  color: var(--lcd-dim);
+  font-weight: bold;
+}
+
+.ms.on {
+  color: var(--lcd-text);
+}
+
+.meter {
+  height: 12px;
+  background: #0c0c14;
+  border: 1px solid #111;
+  border-right-color: #777;
+  border-bottom-color: #777;
+}
+
+.level {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #18a018, #d0d020 70%, #e03010);
+  transition: width 60ms linear;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px 0;
+}
+
+.btn {
+  height: 26px;
+  padding: 0 10px;
+  font: bold 11px Tahoma, sans-serif;
+  color: #ddd;
+  background: linear-gradient(180deg, #6a6a8a, #3a3a52);
+  border: 1px solid #9a9ab8;
+  border-right-color: #111;
+  border-bottom-color: #111;
+}
+
+.btn:active:not(:disabled) {
+  border-color: #111 #9a9ab8 #9a9ab8 #111;
+}
+
+.btn:disabled {
+  color: #777;
+}
+
+.logo {
+  margin-left: auto;
+  font-size: 20px;
+  filter: drop-shadow(0 0 3px #f0c040);
+}
