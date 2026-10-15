@@ -54,6 +54,7 @@ const JUNK =
 function stripJunk(s: string): string {
   return s
     .replace(JUNK, "")
+    .replace(/\s*[([]?\s*\bprod(?:\.|uced)?\s+by\b.*$/i, "") // "Prod. By Tony Fadd"
     .replace(/\s{2,}/g, " ")
     .replace(/\s*[-–—]\s*$/, "")
     .trim();
@@ -72,7 +73,13 @@ const SEP = /\s[-–—]\s/;
 
 /** Drop a trailing "feat./ft./featuring …" (and any bracket around it). */
 function stripFeat(s: string): string {
-  return s.replace(/\s*[([]?\s*(?:feat\.?|ft\.?|featuring)\b.*$/i, "").trim();
+  // Leading \b so "Daft Punk" / "Left Hand Free" keep their "ft".
+  return s.replace(/\s*[([]?\s*\b(?:feat\.?|ft\.?|featuring)(?=\s|$).*$/i, "").trim();
+}
+
+/** First-billed artist of a collaboration: "A & B", "A, B", "A x B", "A and B". */
+function mainArtist(s: string): string {
+  return s.split(/\s*(?:&|,|\sx\s|\sand\s)\s*/i)[0].trim();
 }
 
 /** Ordered, de-duplicated (artist, title) guesses, best first. */
@@ -109,18 +116,52 @@ export function trackCandidates(
     add(left, right); // Tyga / Molly ft. ...
     add(cleanArtist, right);
   }
-  add(cleanArtist, stripFeat(cleanTitle));
-  add(cleanArtist, cleanTitle);
+  // Fingerprint services bill guests in the artist too ("A featuring B",
+  // "A & B"), which LRCLIB usually files under the main artist alone.
+  const soloArtist = stripFeat(cleanArtist);
+  const artists = [cleanArtist, soloArtist, mainArtist(soloArtist)];
+  // Last resort: drop every bracketed tag. Fingerprints often match an
+  // alternate release — "(Acappella)", "(Radio Edit)", "(Clean)" — whose
+  // words are the original's, filed under the plain title.
+  const bareTitle = stripFeat(cleanTitle.replace(/\s*[([][^)\]]*[)\]]/g, ""));
+  for (const t of [stripFeat(cleanTitle), cleanTitle, bareTitle]) for (const a of artists) add(a, t);
 
   return cands;
 }
 
-async function getRecord(url: string): Promise<LrcLibRecord | null> {
-  const res = await fetch(url, { headers: { Accept: "application/json" } });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`LRCLIB ${res.status}`);
-  return res.json();
+/** LRCLIB is throttling or overloaded; retrying right away only makes it worse. */
+export class LyricsBusy extends Error {
+  constructor() {
+    super("The lyrics service is busy — try again in a minute.");
+  }
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * GET an LRCLIB endpoint. Returns the JSON, or null on 404. LRCLIB's 429/503
+ * responses carry no CORS header, so the webview only sees a network error
+ * (and can't read Retry-After); either way we back off and retry a few times,
+ * then give up with LyricsBusy.
+ */
+const BACKOFF_MS = [2000, 5000, 10000];
+
+async function lrclib<T>(path: string): Promise<T | null> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${BASE}${path}`, { headers: { Accept: "application/json" } }).catch(
+      () => null,
+    );
+    if (res?.ok) return res.json();
+    if (res?.status === 404) return null;
+    if (attempt >= BACKOFF_MS.length) throw new LyricsBusy();
+    await sleep(BACKOFF_MS[attempt]);
+  }
+}
+
+const query = (o: Record<string, string | number>) =>
+  Object.entries(o)
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+    .join("&");
 
 function toLyrics(rec: LrcLibRecord | null): Lyrics | null {
   if (!rec) return null;
@@ -138,57 +179,78 @@ function toLyrics(rec: LrcLibRecord | null): Lyrics | null {
 }
 
 /**
- * Look up lyrics for a track. Tries the exact signature first (best for synced
- * lyrics), then falls back to a fuzzy search.
+ * Exact signature lookup, cheap on LRCLIB's side. Album is left out on
+ * purpose: fingerprint and YouTube albums rarely match LRCLIB's exactly, and a
+ * mismatched album turns a hit into a 404.
  */
-export async function fetchLyrics(
-  artist: string,
-  title: string,
-  album: string | null,
-  duration: number,
-): Promise<Lyrics | null> {
-  const q = (o: Record<string, string | number>) =>
-    Object.entries(o)
-      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-      .join("&");
-
-  // 1. Exact get (requires a close duration match on LRCLIB's side).
-  if (duration > 0) {
-    const exact = await getRecord(
-      `${BASE}/get?${q({
-        artist_name: artist,
-        track_name: title,
-        album_name: album ?? "",
-        duration: Math.round(duration),
-      })}`,
-    ).catch(() => null);
-    const lyr = toLyrics(exact);
-    if (lyr) return lyr;
-  }
-
-  // 2. Fuzzy search; prefer the first synced result, else the first result.
-  const results: LrcLibRecord[] = await fetch(
-    `${BASE}/search?${q({ track_name: title, artist_name: artist })}`,
-  )
-    .then((r) => (r.ok ? r.json() : []))
-    .catch(() => []);
-  const best = results.find((r) => r.syncedLyrics) ?? results[0];
-  return toLyrics(best ?? null);
+async function getExact(artist: string, title: string, duration: number): Promise<Lyrics | null> {
+  const params: Record<string, string | number> = { artist_name: artist, track_name: title };
+  if (duration > 0) params.duration = Math.round(duration);
+  return toLyrics(await lrclib<LrcLibRecord>(`/get?${query(params)}`));
 }
 
+/** Fuzzy search; prefers the first synced result. Tightly rate-limited by LRCLIB. */
+async function search(artist: string, title: string): Promise<Lyrics | null> {
+  const results =
+    (await lrclib<LrcLibRecord[]>(`/search?${query({ track_name: title, artist_name: artist })}`)) ?? [];
+  return toLyrics(results.find((r) => r.syncedLyrics) ?? results[0] ?? null);
+}
+
+/** Searches are the scarce resource; don't spend more than this per track. */
+const MAX_SEARCHES = 3;
+
+/** Hits persist across launches, so replaying a song never touches LRCLIB. */
+const cache = {
+  get(key: string): Lyrics | null {
+    try {
+      const raw = localStorage.getItem(`lyrics:${key}`);
+      return raw ? (JSON.parse(raw) as Lyrics) : null;
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, value: Lyrics) {
+    try {
+      localStorage.setItem(`lyrics:${key}`, JSON.stringify(value));
+    } catch {
+      // Storage full or unavailable; the cache is only an optimisation.
+    }
+  },
+};
+
 /**
- * Lyrics lookup that tolerates YouTube-style metadata: it cleans the title,
- * splits "Artist - Song", and tries each candidate until one matches.
+ * Lyrics lookup that tolerates YouTube-style and fingerprint metadata: it
+ * cleans the names, builds candidate (artist, title) pairs, tries a cheap
+ * exact lookup for each, then a few fuzzy searches. Throws LyricsBusy if
+ * LRCLIB is throttling, so the UI doesn't claim there are no lyrics.
  */
 export async function fetchLyricsSmart(
   artist: string,
   title: string,
-  album: string | null,
   duration: number,
 ): Promise<Lyrics | null> {
-  for (const c of trackCandidates(artist, title)) {
-    const lyr = await fetchLyrics(c.artist, c.title, album, duration).catch(() => null);
-    if (lyr) return lyr;
+  const key = `${artist}\u0000${title}`.toLowerCase();
+  const hit = cache.get(key);
+  if (hit) return hit;
+
+  const cands = trackCandidates(artist, title);
+  let found: Lyrics | null = null;
+  for (const c of cands) {
+    if (!(found = await getExact(c.artist, c.title, duration))) continue;
+    // The exact lookup returns LRCLIB's canonical entry, which may be plain
+    // text even when another copy of the song is synced. One search to check;
+    // if LRCLIB is busy, plain lyrics still beat none.
+    if (!found.synced && found.lines.length) {
+      const alt = await search(c.artist, c.title).catch(() => null);
+      if (alt?.synced) found = alt;
+    }
+    break;
   }
-  return null;
+  if (!found) {
+    for (const c of cands.slice(0, MAX_SEARCHES)) {
+      if ((found = await search(c.artist, c.title))) break;
+    }
+  }
+  if (found) cache.set(key, found);
+  return found;
 }

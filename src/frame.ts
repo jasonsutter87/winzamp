@@ -12,7 +12,7 @@ export interface CaptureInfo {
 }
 
 // Emitted by the macOS Now Playing bridge whenever the current track changes,
-// and (same shape) by the ACRCloud identifier on the "identified" event.
+// and (same shape) by the song identifier (Shazam/ACRCloud) on the "identified" event.
 export interface NowPlaying {
   playing: boolean;
   title: string | null;

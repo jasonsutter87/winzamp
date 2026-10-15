@@ -35,7 +35,7 @@ pub struct CaptureInfo {
 }
 
 /// How many seconds of mono audio to keep for song identification.
-pub const ID_SECONDS: usize = 8;
+pub const ID_SECONDS: usize = 12;
 
 /// Stereo FFT ring (newest FFT_SIZE frames) plus a longer rolling mono buffer
 /// used for fingerprinting. Both live under one lock so the audio callback

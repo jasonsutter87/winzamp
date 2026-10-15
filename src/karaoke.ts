@@ -1,6 +1,6 @@
 // Karaoke window. Three ways in, one pipeline:
 //   1. Now Playing (macOS MediaRemote)  → accurate position + a track name.
-//   2. Identify (ACRCloud fingerprint)  → the real name when #1 is junk
+//   2. Identify (Shazam fingerprint)  → the real name when #1 is junk
 //      (YouTube video titles) or absent (FM radio, Android).
 //   3. Whichever name we trust → LRCLIB synced lyrics, scrolled by position.
 //
@@ -9,7 +9,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { IdentifyStatus, NowPlaying } from "./frame";
-import { fetchLyricsSmart, type Lyrics } from "./lyrics";
+import { fetchLyricsSmart, LyricsBusy, type Lyrics } from "./lyrics";
 
 const $ = (id: string) => document.getElementById(id)!;
 const linesEl = $("lines");
@@ -57,17 +57,16 @@ function renderLyrics(l: Lyrics) {
   if (!l.lines.length) msgEl.textContent = "🎵 (instrumental — no lyrics)";
 }
 
-/** Fetch + render lyrics for a resolved name. Returns true on a hit. */
-async function loadLyricsFor(
-  artist: string,
-  title: string,
-  album: string | null,
-  duration: number,
-): Promise<boolean> {
+/**
+ * Fetch + render lyrics for a resolved name. Returns true when it has shown a
+ * final answer (lyrics, or "service busy" — no point identifying or claiming
+ * there are no lyrics then); false means LRCLIB has nothing for this name.
+ */
+async function loadLyricsFor(artist: string, title: string, duration: number): Promise<boolean> {
   const key = keyOf(artist, title);
   showMessage(`Looking up lyrics for “${title}”…`);
   try {
-    const found = await fetchLyricsSmart(artist, title, album, duration);
+    const found = await fetchLyricsSmart(artist, title, duration);
     if (!found) return false;
     resolvedKey = key;
     lyrics = found;
@@ -75,6 +74,10 @@ async function loadLyricsFor(
     renderLyrics(found);
     return true;
   } catch (e) {
+    if (e instanceof LyricsBusy) {
+      showMessage(`🎤 ${e.message}`);
+      return true;
+    }
     showMessage(`Lyrics lookup failed: ${e}`);
     return false;
   }
@@ -92,7 +95,7 @@ async function onNowPlaying(info: NowPlaying) {
   rawKey = raw;
   if (raw === resolvedKey) return; // already showing lyrics for this
 
-  if (info.artist && info.title && (await loadLyricsFor(info.artist, info.title, info.album, info.duration))) {
+  if (info.artist && info.title && (await loadLyricsFor(info.artist, info.title, info.duration))) {
     return;
   }
   // Metadata was junk or had no lyrics → fingerprint it (once per raw track).
@@ -115,7 +118,7 @@ async function onIdentified(info: NowPlaying) {
     posAt = performance.now();
   }
   if (info.artist && info.title) {
-    const ok = await loadLyricsFor(info.artist, info.title, info.album, info.duration);
+    const ok = await loadLyricsFor(info.artist, info.title, info.duration);
     if (!ok) showMessage(`Identified “${info.artist} — ${info.title}”, but no lyrics found.`);
   }
 }

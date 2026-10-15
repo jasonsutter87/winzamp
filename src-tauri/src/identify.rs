@@ -1,10 +1,12 @@
-//! Song identification via ACRCloud fingerprinting.
+//! Song identification by sound.
 //!
-//! Cross-platform by design: we send a short captured audio sample to
-//! ACRCloud, which returns the real artist/title (plus `play_offset_ms`, how
-//! far into the track the sample was — perfect for syncing lyrics). This is
-//! the universal path that also works in the car on Android and for FM radio,
-//! where there is no Now Playing metadata to read.
+//! Cross-platform by design: we fingerprint a short captured audio sample and
+//! get back the real artist/title plus how far into the track it was (perfect
+//! for syncing lyrics). This is the universal path that also works in the car
+//! on Android and for FM radio, where there is no Now Playing metadata to read.
+//!
+//! Backends: Shazam (`shazam.rs`, free, no key) by default; ACRCloud when
+//! credentials are configured.
 //!
 //! On a match we emit a "nowplaying"-shaped event so the existing lyrics
 //! pipeline (LRCLIB) handles it with no special case. Progress and errors go
@@ -90,10 +92,15 @@ fn wav_bytes(mono: &[f32], rate: u32) -> Vec<u8> {
 }
 
 /// Kick off an identification from the given sample. Results arrive as events.
-pub fn identify(app: AppHandle, creds: Creds, mono: Vec<f32>, rate: u32) {
+/// Uses ACRCloud when credentials are configured, Shazam otherwise.
+pub fn identify(app: AppHandle, mono: Vec<f32>, rate: u32) {
     std::thread::spawn(move || {
         status(&app, "matching", "Identifying…");
-        match run(&creds, &mono, rate) {
+        let result = match load_creds() {
+            Some(creds) => run(&creds, &mono, rate),
+            None => crate::shazam::identify(&mono, rate),
+        };
+        match result {
             Ok(Some(np)) => {
                 let title = np
                     .get("title")

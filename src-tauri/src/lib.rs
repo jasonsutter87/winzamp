@@ -1,5 +1,6 @@
 mod audio;
 mod identify;
+mod shazam;
 #[cfg(target_os = "macos")]
 mod nowplaying;
 
@@ -22,9 +23,10 @@ fn now_playing() -> Option<()> {
     None
 }
 
-/// Opens (or focuses) the Milkdrop window.
+/// Opens (or focuses) the Milkdrop window. Must be async: building a window
+/// from a sync command deadlocks the main thread on Windows (WebView2).
 #[tauri::command]
-fn open_milkdrop(app: AppHandle) -> tauri::Result<()> {
+async fn open_milkdrop(app: AppHandle) -> tauri::Result<()> {
     if let Some(win) = app.get_webview_window("milkdrop") {
         return win.set_focus();
     }
@@ -36,8 +38,9 @@ fn open_milkdrop(app: AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Identify the song currently coming through the speakers (ACRCloud), then
-/// emit it as a `nowplaying` event so the lyrics pipeline picks it up.
+/// Identify the song currently coming through the speakers (Shazam, or
+/// ACRCloud if configured), then emit it as an `identified` event so the
+/// lyrics pipeline picks it up.
 #[tauri::command]
 fn identify_song(app: AppHandle) -> Result<(), String> {
     let Some((mono, rate)) = audio::id_snapshot() else {
@@ -52,28 +55,18 @@ fn identify_song(app: AppHandle) -> Result<(), String> {
         );
         return Err("too quiet".into());
     }
-    match identify::load_creds() {
-        Some(creds) => {
-            let _ = app.emit(
-                "identify-status",
-                serde_json::json!({ "stage": "listening", "message": "Listening…" }),
-            );
-            identify::identify(app, creds, mono, rate);
-            Ok(())
-        }
-        None => {
-            let _ = app.emit(
-                "identify-status",
-                serde_json::json!({ "stage": "unconfigured", "message": "Add ACRCloud keys to identify songs (see README)." }),
-            );
-            Err("ACRCloud not configured".into())
-        }
-    }
+    let _ = app.emit(
+        "identify-status",
+        serde_json::json!({ "stage": "listening", "message": "Listening…" }),
+    );
+    identify::identify(app, mono, rate);
+    Ok(())
 }
 
-/// Opens (or focuses) the full-screen karaoke window.
+/// Opens (or focuses) the full-screen karaoke window. Async for the same
+/// reason as `open_milkdrop`.
 #[tauri::command]
-fn open_karaoke(app: AppHandle) -> tauri::Result<()> {
+async fn open_karaoke(app: AppHandle) -> tauri::Result<()> {
     if let Some(win) = app.get_webview_window("karaoke") {
         return win.set_focus();
     }
