@@ -7,6 +7,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::SampleFormat;
 use rustfft::{num_complex::Complex, FftPlanner};
 use serde::Serialize;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
@@ -155,6 +156,8 @@ fn run(app: &AppHandle) -> anyhow::Result<()> {
 
     loop {
         let (l, r) = ring.lock().unwrap().snapshot();
+        let rms = (l.iter().chain(&r).map(|s| s * s).sum::<f32>() / (2 * FFT_SIZE) as f32).sqrt();
+        LEVEL.store(rms.to_bits(), Ordering::Relaxed);
 
         for (i, slot) in buf.iter_mut().enumerate() {
             *slot = Complex::new((l[i] + r[i]) * 0.5 * hann[i], 0.0);
@@ -179,6 +182,15 @@ fn run(app: &AppHandle) -> anyhow::Result<()> {
         let _ = app.emit("frame", frame);
         std::thread::sleep(FRAME_INTERVAL);
     }
+}
+
+/// RMS of the latest analysis window (f32 bits), for the auto-identifier's
+/// silence detection.
+static LEVEL: AtomicU32 = AtomicU32::new(0);
+
+/// Current loudness (RMS, 0..1) of what's coming through the speakers.
+pub fn level() -> f32 {
+    f32::from_bits(LEVEL.load(Ordering::Relaxed))
 }
 
 /// Last known capture info, so windows opened later can ask for it.

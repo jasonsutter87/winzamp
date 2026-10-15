@@ -22,6 +22,7 @@ let posAt = 0;
 let resolvedKey = "";
 let rawKey = "";
 let triedIdentifyFor = "";
+let feedSeen = false; // a Now Playing feed (macOS MediaRemote) supplies position
 let lyrics: Lyrics | null = null;
 let lineEls: HTMLElement[] = [];
 let activeIdx = -1;
@@ -85,6 +86,7 @@ async function loadLyricsFor(artist: string, title: string, duration: number): P
 
 // --- Now Playing (position + first-guess name) ----------------------------
 async function onNowPlaying(info: NowPlaying) {
+  feedSeen = true;
   pos = info;
   posAt = performance.now();
   $("track").textContent = info.title ?? "—";
@@ -113,7 +115,9 @@ async function onIdentified(info: NowPlaying) {
   $("track").textContent = info.title ?? "—";
   $("artist").textContent = info.artist ?? "";
   // No Now Playing position stream (radio/Android)? Use the fingerprint offset.
-  if (!pos) {
+  // Without a Now Playing feed (Windows, radio, Android) the fingerprint is
+  // the only clock, and each new song brings its own position.
+  if (!feedSeen) {
     pos = info;
     posAt = performance.now();
   }

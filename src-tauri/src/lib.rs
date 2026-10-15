@@ -1,4 +1,5 @@
 mod audio;
+mod autoid;
 mod identify;
 mod shazam;
 mod volume;
@@ -60,7 +61,7 @@ fn identify_song(app: AppHandle) -> Result<(), String> {
         "identify-status",
         serde_json::json!({ "stage": "listening", "message": "Listening…" }),
     );
-    identify::identify(app, mono, rate);
+    identify::identify(app, mono, rate, false);
     Ok(())
 }
 
@@ -121,6 +122,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             audio::start(app.handle().clone());
+            autoid::start(app.handle().clone());
             #[cfg(target_os = "macos")]
             nowplaying::start(app.handle().clone());
             Ok(())
@@ -132,6 +134,7 @@ pub fn run() {
             open_milkdrop,
             open_karaoke,
             media_key,
+            autoid::set_auto_identify,
             volume::get_volume,
             volume::set_volume,
             volume::set_balance

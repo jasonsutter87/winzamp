@@ -57,8 +57,12 @@ used instead (official, paid after a 14-day trial):
 - copy `src-tauri/acrcloud.example.json` to `src-tauri/acrcloud.json` (git-ignored) and fill it in, **or**
 - set `ACRCLOUD_HOST`, `ACRCLOUD_ACCESS_KEY`, `ACRCLOUD_ACCESS_SECRET` before `npm run tauri dev`.
 
-Click **🎧** (main window) or **🎧 Identify** (karaoke). The karaoke window
-also auto-identifies when a title doesn't resolve to lyrics.
+Click **🎧** (main window) or **🎧 Identify** (karaoke), or let it happen on
+its own: with **Auto-identify songs** on (right-click menu; default on),
+`src-tauri/src/autoid.rs` re-identifies after a silence gap followed by ~9 s
+of music, and re-checks every minute (20 s after a change) to catch
+crossfades and ads that run straight into a song. Automatic attempts stay
+silent unless the song changed.
 
 To test the Shazam path against a clip (needs network):
 `SHAZAM_WAV=clip.wav cargo test --lib shazam -- --ignored --nocapture`
@@ -70,7 +74,7 @@ The identify engine is cross-platform on purpose. The plan:
 1. **Mac (done):** mic/system-audio → Shazam → LRCLIB → lyrics screen.
 2. **Android build:** same Tauri project, Android target, mic capture + the
    same Shazam call. Fullscreen, big text, screen-always-on, dash-mounted.
-3. Auto re-identify on song change; FM-radio friendly.
+3. ~~Auto re-identify on song change~~; FM-radio friendly.
 
 (CarPlay/Android Auto only allow template UIs in fixed app categories, so a
 custom lyrics screen runs as a mounted-phone app, not a projected one.)

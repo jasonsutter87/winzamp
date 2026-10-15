@@ -17,7 +17,9 @@ use hmac::{Hmac, Mac};
 use serde::Serialize;
 use serde_json::Value;
 use sha1::Sha1;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
 
 type HmacSha1 = Hmac<Sha1>;
@@ -91,17 +93,66 @@ fn wav_bytes(mono: &[f32], rate: u32) -> Vec<u8> {
     out
 }
 
+/// "artist\0title" of the song we last announced, so automatic checks only
+/// speak up when the song actually changed.
+static CURRENT: Mutex<String> = Mutex::new(String::new());
+/// When the last attempt (manual or automatic) started.
+static LAST_ATTEMPT: Mutex<Option<Instant>> = Mutex::new(None);
+static IN_FLIGHT: AtomicBool = AtomicBool::new(false);
+/// Set when the last attempt found a different song: worth confirming soon,
+/// since that "song" may have been an ad or intro running straight into it.
+static JUST_CHANGED: AtomicBool = AtomicBool::new(false);
+
+pub fn just_changed() -> bool {
+    JUST_CHANGED.load(Ordering::Relaxed)
+}
+
+pub fn in_flight() -> bool {
+    IN_FLIGHT.load(Ordering::Relaxed)
+}
+
+/// Time since the last identification attempt started, if any.
+pub fn since_last_attempt() -> Option<std::time::Duration> {
+    LAST_ATTEMPT.lock().unwrap().map(|t| t.elapsed())
+}
+
+fn song_key(np: &Value) -> String {
+    let field = |k| np.get(k).and_then(Value::as_str).unwrap_or("").trim().to_lowercase();
+    format!("{}\0{}", field("artist"), field("title"))
+}
+
 /// Kick off an identification from the given sample. Results arrive as events.
 /// Uses ACRCloud when credentials are configured, Shazam otherwise.
-pub fn identify(app: AppHandle, mono: Vec<f32>, rate: u32) {
+///
+/// `auto` attempts (from autoid.rs) stay silent: no progress or no-match
+/// messages, and an "identified" event only when the song changed.
+pub fn identify(app: AppHandle, mono: Vec<f32>, rate: u32, auto: bool) {
+    *LAST_ATTEMPT.lock().unwrap() = Some(Instant::now());
+    IN_FLIGHT.store(true, Ordering::Relaxed);
+    JUST_CHANGED.store(false, Ordering::Relaxed);
     std::thread::spawn(move || {
-        status(&app, "matching", "Identifying…");
+        if !auto {
+            status(&app, "matching", "Identifying…");
+        }
+        let asked = Instant::now();
         let result = match load_creds() {
             Some(creds) => run(&creds, &mono, rate),
             None => crate::shazam::identify(&mono, rate),
         };
+        IN_FLIGHT.store(false, Ordering::Relaxed);
         match result {
-            Ok(Some(np)) => {
+            Ok(Some(mut np)) => {
+                // The match is for the end of the sample; the song kept
+                // playing while we waited for the answer.
+                if let Some(e) = np.get("elapsed").and_then(Value::as_f64) {
+                    np["elapsed"] = (e + asked.elapsed().as_secs_f64()).into();
+                }
+                let key = song_key(&np);
+                let changed = std::mem::replace(&mut *CURRENT.lock().unwrap(), key.clone()) != key;
+                JUST_CHANGED.store(changed, Ordering::Relaxed);
+                if auto && !changed {
+                    return;
+                }
                 let title = np
                     .get("title")
                     .and_then(|v| v.as_str())
@@ -112,6 +163,7 @@ pub fn identify(app: AppHandle, mono: Vec<f32>, rate: u32) {
                 // resolves the name; position may still come from Now Playing.
                 let _ = app.emit("identified", np);
             }
+            _ if auto => {}
             Ok(None) => status(&app, "nomatch", "No match — try again with the chorus playing."),
             Err(e) => status(&app, "error", format!("Identify failed: {e}")),
         }

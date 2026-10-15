@@ -247,6 +247,29 @@ const skinned = new SkinnedPlayer(
   (kind: Slider, value: number) => (kind === "volume" ? setVolume(value) : setBalance(value)),
 );
 
+// --- auto-identify -----------------------------------------------------------
+// Rust watches the audio for song changes (silence gaps, plus a periodic check
+// for crossfades) and re-identifies on its own; this just remembers the toggle.
+const AUTO_ID_KEY = "autoIdentify";
+let autoIdentify = true;
+try {
+  autoIdentify = localStorage.getItem(AUTO_ID_KEY) !== "off";
+} catch {
+  // Default on.
+}
+void invoke("set_auto_identify", { enabled: autoIdentify });
+
+function toggleAutoIdentify() {
+  autoIdentify = !autoIdentify;
+  void invoke("set_auto_identify", { enabled: autoIdentify });
+  try {
+    localStorage.setItem(AUTO_ID_KEY, autoIdentify ? "on" : "off");
+  } catch {
+    // Not remembered across launches; fine.
+  }
+  flash(`Auto-identify ${autoIdentify ? "on" : "off"}`);
+}
+
 const SKIN_KEY = "skin";
 let currentSkin = "default";
 
@@ -315,6 +338,7 @@ async function showSkinMenu() {
     await MenuItem.new({ text: "Milkdrop", action: () => void openMilkdrop() }),
     await MenuItem.new({ text: "Karaoke", action: () => void openKaraoke() }),
     await MenuItem.new({ text: "Identify song", action: () => void identify() }),
+    await CheckMenuItem.new({ text: "Auto-identify songs", checked: autoIdentify, action: toggleAutoIdentify }),
   ];
   await (await Menu.new({ items })).popup();
 }
