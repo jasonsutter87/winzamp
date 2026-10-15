@@ -36,12 +36,26 @@
       }
       #track { font-size: 20px; font-weight: 700; }
       #artist { font-size: 15px; color: var(--upcoming); }
-      #src {
+      #identify {
         margin-left: auto;
+        font: 600 12px "Helvetica Neue", Arial, sans-serif;
+        color: #cfe8ff;
+        background: rgba(53, 224, 255, 0.12);
+        border: 1px solid rgba(53, 224, 255, 0.4);
+        border-radius: 999px;
+        padding: 5px 12px;
+        cursor: pointer;
+      }
+      #identify:active {
+        background: rgba(53, 224, 255, 0.28);
+      }
+      #src {
         font-size: 11px;
         color: var(--dim);
         text-transform: uppercase;
         letter-spacing: 1px;
+        min-width: 120px;
+        text-align: right;
       }
       #scroll {
         flex: 1 1 auto;
@@ -102,6 +116,7 @@
       <header>
         <span id="track">—</span>
         <span id="artist"></span>
+        <button id="identify" title="Identify what's playing (ACRCloud)">🎧 Identify</button>
         <span id="src"></span>
       </header>
       <div id="scroll">

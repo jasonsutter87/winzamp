@@ -1,0 +1,6 @@
+{
+  "_comment": "Copy this file to acrcloud.json (git-ignored) and fill in the values from your ACRCloud console → Audio & Video Recognition project. Or set ACRCLOUD_HOST / ACRCLOUD_ACCESS_KEY / ACRCLOUD_ACCESS_SECRET in the environment instead.",
+  "host": "identify-xx-xxxx-x.acrcloud.com",
+  "access_key": "YOUR_ACCESS_KEY",
+  "access_secret": "YOUR_ACCESS_SECRET"
+}

@@ -11,7 +11,8 @@ export interface CaptureInfo {
   channels: number;
 }
 
-// Emitted by the macOS Now Playing bridge whenever the current track changes.
+// Emitted by the macOS Now Playing bridge whenever the current track changes,
+// and (same shape) by the ACRCloud identifier on the "identified" event.
 export interface NowPlaying {
   playing: boolean;
   title: string | null;
@@ -20,4 +21,16 @@ export interface NowPlaying {
   elapsed: number;
   duration: number;
   rate: number;
+}
+
+// Progress of a song-identification attempt (the "identify-status" event).
+export interface IdentifyStatus {
+  stage:
+    | "listening"
+    | "matching"
+    | "matched"
+    | "nomatch"
+    | "error"
+    | "unconfigured";
+  message: string;
 }

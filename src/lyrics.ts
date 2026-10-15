@@ -70,6 +70,11 @@ function channelToArtist(a: string): string {
 
 const SEP = /\s[-–—]\s/;
 
+/** Drop a trailing "feat./ft./featuring …" (and any bracket around it). */
+function stripFeat(s: string): string {
+  return s.replace(/\s*[([]?\s*(?:feat\.?|ft\.?|featuring)\b.*$/i, "").trim();
+}
+
 /** Ordered, de-duplicated (artist, title) guesses, best first. */
 export function trackCandidates(
   artist: string,
@@ -94,20 +99,18 @@ export function trackCandidates(
   const cleanArtist = channelToArtist(artist);
   const cleanTitle = stripJunk(title);
 
-  // YouTube videos usually carry "Artist - Song" in the title itself.
+  // YouTube videos usually carry "Artist - Song" in the title itself. Try the
+  // feat.-stripped form first (best LRCLIB hit rate), then the full form.
   if (SEP.test(cleanTitle)) {
     const [left, ...rest] = cleanTitle.split(SEP);
     const right = stripJunk(rest.join(" - "));
-    add(left, right); // artist from the title
-    add(cleanArtist, right); // artist from the channel
+    add(left, stripFeat(right)); // Tyga / Molly
+    add(cleanArtist, stripFeat(right)); // channel artist / Molly
+    add(left, right); // Tyga / Molly ft. ...
+    add(cleanArtist, right);
   }
+  add(cleanArtist, stripFeat(cleanTitle));
   add(cleanArtist, cleanTitle);
-
-  // A looser pass with any "feat." dropped.
-  const noFeat = cleanTitle
-    .replace(/\s*[([]?\s*(?:feat\.?|ft\.?|featuring)\s+[^)\]]*[)\]]?/i, "")
-    .trim();
-  if (noFeat && noFeat !== cleanTitle) add(cleanArtist, noFeat);
 
   return cands;
 }

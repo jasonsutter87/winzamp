@@ -34,11 +34,19 @@ pub struct CaptureInfo {
     pub channels: u16,
 }
 
-/// Fixed-size stereo ring: the newest FFT_SIZE frames, oldest first on read.
+/// How many seconds of mono audio to keep for song identification.
+pub const ID_SECONDS: usize = 8;
+
+/// Stereo FFT ring (newest FFT_SIZE frames) plus a longer rolling mono buffer
+/// used for fingerprinting. Both live under one lock so the audio callback
+/// takes only a single mutex.
 struct Ring {
     l: [f32; FFT_SIZE],
     r: [f32; FFT_SIZE],
     pos: usize,
+    id: std::collections::VecDeque<f32>,
+    id_cap: usize,
+    rate: u32,
 }
 
 impl Ring {
@@ -46,6 +54,11 @@ impl Ring {
         self.l[self.pos] = l;
         self.r[self.pos] = r;
         self.pos = (self.pos + 1) % FFT_SIZE;
+
+        self.id.push_back((l + r) * 0.5);
+        if self.id.len() > self.id_cap {
+            self.id.pop_front();
+        }
     }
 
     fn snapshot(&self) -> (Vec<f32>, Vec<f32>) {
@@ -57,6 +70,21 @@ impl Ring {
         };
         (unroll(&self.l), unroll(&self.r))
     }
+
+    fn id_snapshot(&self) -> (Vec<f32>, u32) {
+        (self.id.iter().copied().collect(), self.rate)
+    }
+}
+
+use std::sync::OnceLock;
+
+/// Shared handle to the capture buffers, so the identify command can grab a
+/// fingerprinting sample without owning the stream.
+static BUFFERS: OnceLock<Arc<Mutex<Ring>>> = OnceLock::new();
+
+/// The last ~`ID_SECONDS` of mono audio and its sample rate, if capture is up.
+pub fn id_snapshot() -> Option<(Vec<f32>, u32)> {
+    BUFFERS.get().map(|b| b.lock().unwrap().id_snapshot())
 }
 
 /// Spawns the capture thread. It owns the cpal stream for the life of the app.
@@ -88,11 +116,16 @@ fn run(app: &AppHandle) -> anyhow::Result<()> {
     };
     let config: cpal::StreamConfig = supported.into();
 
+    let id_cap = info.sample_rate as usize * ID_SECONDS;
     let ring = Arc::new(Mutex::new(Ring {
         l: [0.0; FFT_SIZE],
         r: [0.0; FFT_SIZE],
         pos: 0,
+        id: std::collections::VecDeque::with_capacity(id_cap + 1),
+        id_cap,
+        rate: info.sample_rate,
     }));
+    let _ = BUFFERS.set(ring.clone());
 
     let writer = ring.clone();
     let stream = device.build_input_stream(

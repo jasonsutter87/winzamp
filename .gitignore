@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Song-identification credentials (keep secret)
+src-tauri/acrcloud.json
+.env
+.env.local

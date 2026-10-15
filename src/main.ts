@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ClassicVis, type VisMode } from "./classicVis";
-import type { CaptureInfo, Frame, NowPlaying } from "./frame";
+import type { CaptureInfo, Frame, IdentifyStatus, NowPlaying } from "./frame";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -18,6 +18,7 @@ $("vis").addEventListener("click", cycleVis);
 $("vis-mode").addEventListener("click", cycleVis);
 $("milkdrop").addEventListener("click", () => invoke("open_milkdrop"));
 $("karaoke").addEventListener("click", () => invoke("open_karaoke"));
+$("identify").addEventListener("click", () => invoke("identify_song").catch(() => {}));
 $("close").addEventListener("click", () => getCurrentWindow().close());
 $("minimize").addEventListener("click", () => getCurrentWindow().minimize());
 
@@ -90,5 +91,7 @@ listen<Frame>("frame", (e) => onFrame(e.payload));
 listen<CaptureInfo>("capture-started", (e) => showInfo(e.payload));
 listen<string>("capture-error", (e) => setMarquee(`Capture error: ${e.payload}`));
 listen<NowPlaying>("nowplaying", (e) => onNowPlaying(e.payload));
+listen<NowPlaying>("identified", (e) => onNowPlaying(e.payload));
+listen<IdentifyStatus>("identify-status", (e) => setMarquee(`🎧 ${e.payload.message}`));
 // Capture may have started before this page loaded.
 invoke<CaptureInfo | null>("capture_info").then((info) => info && showInfo(info));
