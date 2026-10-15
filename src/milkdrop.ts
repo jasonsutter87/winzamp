@@ -19,10 +19,15 @@ const label = document.getElementById("preset")!;
 
 // Butterchurn requires an AudioContext even though we never route audio
 // through it; it only reads the sample rate.
+// Butterchurn's final pass draws width x height *device* pixels, so hand it
+// the backing-store size and pixelRatio 1, or Retina renders a quarter-size image.
+const devicePx = () => {
+  const dpr = window.devicePixelRatio || 1;
+  return { width: Math.round(innerWidth * dpr), height: Math.round(innerHeight * dpr) };
+};
 const viz = butterchurn.createVisualizer(new AudioContext(), canvas, {
-  width: window.innerWidth,
-  height: window.innerHeight,
-  pixelRatio: window.devicePixelRatio || 1,
+  ...devicePx(),
+  pixelRatio: 1,
 });
 
 const presets = butterchurnPresets.getPresets();
@@ -49,9 +54,10 @@ window.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("resize", () => {
-  canvas.width = window.innerWidth * devicePixelRatio;
-  canvas.height = window.innerHeight * devicePixelRatio;
-  viz.setRendererSize(window.innerWidth, window.innerHeight);
+  const { width, height } = devicePx();
+  canvas.width = width;
+  canvas.height = height;
+  viz.setRendererSize(width, height);
 });
 window.dispatchEvent(new Event("resize"));
 
