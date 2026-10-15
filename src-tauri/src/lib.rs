@@ -1,4 +1,6 @@
 mod audio;
+#[cfg(target_os = "macos")]
+mod nowplaying;
 
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
@@ -27,6 +29,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             audio::start(app.handle().clone());
+            #[cfg(target_os = "macos")]
+            nowplaying::start(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![capture_info, open_milkdrop])

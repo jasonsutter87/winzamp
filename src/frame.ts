@@ -10,3 +10,14 @@ export interface CaptureInfo {
   sample_rate: number;
   channels: number;
 }
+
+// Emitted by the macOS Now Playing bridge whenever the current track changes.
+export interface NowPlaying {
+  playing: boolean;
+  title: string | null;
+  artist: string | null;
+  album: string | null;
+  elapsed: number;
+  duration: number;
+  rate: number;
+}
