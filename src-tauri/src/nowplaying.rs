@@ -7,14 +7,14 @@
 //! perl is. perl loading our dylib via DynaLoader is the supported seam, and
 //! it also avoids SIP's DYLD_INSERT restriction (no injection — perl opts in).
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter};
 
 /// One Now Playing snapshot, as the dylib prints it. Deserialized opaquely and
 /// forwarded; the shape is mirrored in the frontend's NowPlaying type.
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct NowPlaying {
     pub playing: bool,
     pub title: Option<String>,
