@@ -1,9 +1,15 @@
 // Milkdrop window: Butterchurn fed directly with the pass-through waveform.
 // Keys: → / space next preset, ← previous, H toggles auto-cycling.
-import butterchurn from "butterchurn";
-import butterchurnPresets from "butterchurn-presets";
+import butterchurnModule from "butterchurn";
+import butterchurnPresetsModule from "butterchurn-presets";
 import { listen } from "@tauri-apps/api/event";
 import type { Frame } from "./frame";
+
+// Both packages are webpack UMD builds of ES modules, so depending on the
+// bundler's interop the real export may sit one level down under `default`.
+const unwrap = <T>(m: T): T => (m as { default?: T }).default ?? m;
+const butterchurn = unwrap(butterchurnModule);
+const butterchurnPresets = unwrap(butterchurnPresetsModule);
 
 const CYCLE_MS = 20_000;
 const BLEND_SECS = 2.7;
