@@ -337,6 +337,7 @@ async function showSkinMenu() {
     await MenuItem.new({ text: "Load .wsz skin…", action: () => $("skin-file").click() }),
     await MenuItem.new({ text: "Browse more at skins.webamp.org", action: () => void openUrl("https://skins.webamp.org/") }),
     await PredefinedMenuItem.new({ item: "Separator" }),
+    await MenuItem.new({ text: "Equalizer", action: () => void openEq() }),
     await MenuItem.new({ text: "Milkdrop", action: () => void openMilkdrop() }),
     await MenuItem.new({ text: "Karaoke", action: () => void openKaraoke() }),
     await MenuItem.new({ text: "Identify song", action: () => void identify() }),
