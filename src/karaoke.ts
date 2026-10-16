@@ -166,8 +166,14 @@ listen<IdentifyStatus>("identify-status", (e) => {
   const s = e.payload;
   if (s.stage === "unconfigured" || s.stage === "error" || s.stage === "nomatch") {
     showMessage(s.message);
+    $("src").textContent = ""; // clear any in-progress hint; message carries it
+  } else if (s.stage === "listening" || s.stage === "matching") {
+    $("src").textContent = s.stage; // transient progress (CSS uppercases it)
+  } else {
+    // "matched": leave the source slot for the lyrics lookup to fill (or for
+    // the "no lyrics found" message), so a leftover stage never lingers here.
+    $("src").textContent = "";
   }
-  $("src").textContent = s.stage.toUpperCase();
 });
 
 // Pull the current track immediately, in case we opened mid-song.

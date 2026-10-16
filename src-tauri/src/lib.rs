@@ -48,14 +48,21 @@ fn identify_song(app: AppHandle) -> Result<(), String> {
     let Some((mono, rate)) = audio::id_snapshot() else {
         return Err("no audio captured yet — play something first".into());
     };
-    // Need a few seconds of sound; silence won't fingerprint.
+    // Need a few seconds of sound; silence won't fingerprint. Dead-zero energy
+    // means the capture tap is handing us silence — almost always because macOS
+    // hasn't granted System Audio Recording — so say that instead of "turn it up".
     let energy: f32 = mono.iter().map(|s| s.abs()).sum::<f32>() / mono.len().max(1) as f32;
     if energy < 0.0005 {
+        let message = if energy < 1e-6 {
+            "No audio is reaching WinzAMP. Enable System Audio Recording for WinzAMP in System Settings → Privacy & Security, then relaunch."
+        } else {
+            "It's too quiet to identify — turn it up."
+        };
         let _ = app.emit(
             "identify-status",
-            serde_json::json!({ "stage": "error", "message": "It's too quiet to identify — turn it up." }),
+            serde_json::json!({ "stage": "error", "message": message }),
         );
-        return Err("too quiet".into());
+        return Err("no capture".into());
     }
     let _ = app.emit(
         "identify-status",
