@@ -22,6 +22,17 @@ function cycleVis() {
 // just other pages in this one webview (Tauri events keep flowing across a
 // navigation). On desktop they stay real windows.
 const isMobile = /Android/i.test(navigator.userAgent);
+
+// The main window is a fixed 550x232 (the classic Winamp size). On a phone,
+// scale it to fill the screen width so it isn't a tiny strip in a sea of black.
+if (isMobile) {
+  document.body.classList.add("mobile");
+  const fit = () => document.documentElement.style.setProperty("--fit", String(window.innerWidth / 550));
+  fit();
+  window.addEventListener("resize", fit);
+  window.addEventListener("orientationchange", fit);
+}
+
 const openMilkdrop = () => (isMobile ? window.location.assign("milkdrop.html") : void invoke("open_milkdrop"));
 const openKaraoke = () => (isMobile ? window.location.assign("karaoke.html") : void invoke("open_karaoke"));
 const openEq = () => (isMobile ? window.location.assign("eq.html") : void invoke("open_eq"));
@@ -147,7 +158,11 @@ const skinState = (): PlayerState => ({
 });
 
 const mediaKey = (key: string) =>
-  invoke("media_key", { key }).catch((e) => setMarquee(`Media key failed: ${e}`));
+  invoke("media_key", { key }).catch(() =>
+    // System media keys are Windows-only; elsewhere (macOS, Android) just say
+    // so briefly instead of parking a scrolling error in the marquee.
+    flash(isMobile ? "Transport control isn't available on the phone" : "Media keys only work on Windows"),
+  );
 
 function onSkinAction(a: Action) {
   switch (a) {

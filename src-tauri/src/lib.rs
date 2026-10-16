@@ -83,7 +83,18 @@ fn identify_song(app: AppHandle) -> Result<(), String> {
     let energy: f32 = mono.iter().map(|s| s.abs()).sum::<f32>() / mono.len().max(1) as f32;
     if energy < 0.0005 {
         let message = if energy < 1e-6 {
-            "No audio is reaching WinzAMP. Enable System Audio Recording for WinzAMP in System Settings → Privacy & Security, then relaunch."
+            #[cfg(target_os = "macos")]
+            {
+                "No audio is reaching WinzAMP. Enable System Audio Recording for WinzAMP in System Settings → Privacy & Security, then relaunch."
+            }
+            #[cfg(target_os = "android")]
+            {
+                "No audio from the mic yet — allow microphone access and make sure something's playing."
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "android")))]
+            {
+                "No audio is reaching WinzAMP."
+            }
         } else {
             "It's too quiet to identify — turn it up."
         };

@@ -169,7 +169,6 @@ fn run(app: &AppHandle) -> anyhow::Result<()> {
         id_cap,
         rate: info.sample_rate,
     }));
-    let _ = BUFFERS.set(ring.clone());
 
     // Desktop loopback hands us f32; a phone mic usually hands us i16. Accept
     // both — everything downstream works in f32 either way.
@@ -204,6 +203,12 @@ fn run(app: &AppHandle) -> anyhow::Result<()> {
         other => anyhow::bail!("unsupported sample format: {other:?}"),
     };
     stream.play()?;
+    // Register the ring the fingerprinter reads ONLY now that a stream actually
+    // opened. Doing it earlier (before build/play) meant a failed first attempt
+    // — e.g. the Android mic before the permission grant — locked BUFFERS to an
+    // empty ring, so later retries fed audio to a different, unregistered ring:
+    // the spectrum moved but identify saw silence.
+    let _ = BUFFERS.set(ring.clone());
     let _ = app.emit("capture-started", info.clone());
     *app_info().lock().unwrap() = Some(info);
 

@@ -325,3 +325,18 @@ body.dropping::after {
 #skin-sheet .sheet-row:active {
   background: rgba(53, 224, 255, 0.15);
 }
+
+/* Phone: the classic 550x232 window scales up to fill the screen width
+   (--fit is set from JS = innerWidth/550), anchored at the top. */
+body.mobile,
+body.mobile html {
+  width: 100vw;
+  height: 100vh;
+  background: #0a0a12;
+  overflow: hidden;
+}
+body.mobile .player,
+body.mobile #skin {
+  transform: scale(var(--fit, 1));
+  transform-origin: top left;
+}
