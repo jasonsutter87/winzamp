@@ -106,14 +106,25 @@ function status(msg: string) {
 sliders.push(makeSlot("PRE", true));
 BAND_LABELS.forEach((l) => sliders.push(makeSlot(l)));
 
-powerBtn.addEventListener("click", () => setPower(!on));
-presetSel.addEventListener("change", () => setPreset(PRESETS[presetSel.value] ?? PRESETS.flat));
+// A phone has no system-audio EQ hook (no Core Audio process tap like macOS,
+// no Equalizer APO like Windows), so the engine genuinely can't run here. Say
+// so plainly rather than present a toggle that errors when tapped.
+const isAndroid = /Android/i.test(navigator.userAgent);
+if (isAndroid) {
+  powerBtn.disabled = true;
+  presetSel.disabled = true;
+  sliders.forEach((s) => (s.disabled = true));
+  status("EQ runs in the desktop app (macOS/Windows). A phone has no system-audio EQ hook.");
+} else {
+  powerBtn.addEventListener("click", () => setPower(!on));
+  presetSel.addEventListener("change", () => setPreset(PRESETS[presetSel.value] ?? PRESETS.flat));
 
-// Sync with the engine in case it was already running (e.g. window reopened).
-invoke<boolean>("eq_running")
-  .then((running) => {
-    on = running;
-    powerBtn.textContent = on ? "ON" : "OFF";
-    powerBtn.classList.toggle("on", on);
-  })
-  .catch(() => {});
+  // Sync with the engine in case it was already running (e.g. window reopened).
+  invoke<boolean>("eq_running")
+    .then((running) => {
+      on = running;
+      powerBtn.textContent = on ? "ON" : "OFF";
+      powerBtn.classList.toggle("on", on);
+    })
+    .catch(() => {});
+}

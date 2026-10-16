@@ -45,6 +45,17 @@ async fn open_milkdrop(app: AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Close a window by label. The secondary windows' Back buttons call this:
+/// closing from the Rust side is reliable on mobile, where a child webview's
+/// own JS `close()` handle often no-ops.
+#[tauri::command]
+async fn close_window(app: AppHandle, label: String) -> tauri::Result<()> {
+    if let Some(win) = app.get_webview_window(&label) {
+        win.close()?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn open_eq(app: AppHandle) -> tauri::Result<()> {
     if let Some(win) = app.get_webview_window("eq") {
@@ -208,6 +219,7 @@ pub fn run() {
             open_milkdrop,
             open_karaoke,
             open_eq,
+            close_window,
             media_key,
             autoid::set_auto_identify,
             volume::get_volume,

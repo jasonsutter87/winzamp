@@ -263,3 +263,65 @@ body.dropping::after {
   font: bold 18px Tahoma, sans-serif;
   border: 3px dashed #8f8fd8;
 }
+
+/* Mobile skin / options sheet (Android has no native menu or right-click). */
+#skin-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+#skin-sheet .sheet-panel {
+  width: 100%;
+  max-width: 520px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #14142a;
+  color: #e8e8ff;
+  border-radius: 16px 16px 0 0;
+  padding: 8px 0 20px;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.6);
+  font-family: "Helvetica Neue", Arial, sans-serif;
+}
+#skin-sheet .sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px 8px;
+  font-weight: 700;
+  font-size: 18px;
+}
+#skin-sheet .sheet-x {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e8e8ff;
+  font-size: 16px;
+  cursor: pointer;
+}
+#skin-sheet .sheet-sep {
+  padding: 14px 18px 4px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #7a7ab0;
+}
+#skin-sheet .sheet-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 18px;
+  border: none;
+  background: none;
+  color: #e8e8ff;
+  font-size: 17px;
+  cursor: pointer;
+}
+#skin-sheet .sheet-row:active {
+  background: rgba(53, 224, 255, 0.15);
+}

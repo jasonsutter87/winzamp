@@ -161,7 +161,7 @@ function onSkinAction(a: Action) {
       return isPlaying() ? mediaKey("playpause") : undefined;
     case "eject":
     case "options":
-      return showSkinMenu();
+      return openSkinMenu();
     case "eq":
       return openEq();
     case "pl":
@@ -346,10 +346,72 @@ async function showSkinMenu() {
   await (await Menu.new({ items })).popup();
 }
 
-$("skin-menu").addEventListener("click", showSkinMenu);
+// Touch devices (Android) have no right-click and native menus don't render,
+// so the menu becomes an in-page sheet — which also doubles as the main nav on
+// a phone (skins + open Milkdrop/Karaoke/EQ/Identify).
+const isMobile = /Android/i.test(navigator.userAgent);
+const openSkinMenu = () => (isMobile ? showSkinSheet() : showSkinMenu());
+
+function showSkinSheet() {
+  document.getElementById("skin-sheet")?.remove();
+  const sheet = document.createElement("div");
+  sheet.id = "skin-sheet";
+  const close = () => sheet.remove();
+
+  const row = (label: string, onTap: () => void, checked = false) => {
+    const b = document.createElement("button");
+    b.className = "sheet-row";
+    b.textContent = checked ? `✓ ${label}` : label;
+    b.addEventListener("click", () => {
+      close();
+      onTap();
+    });
+    return b;
+  };
+  const sep = (text: string) => {
+    const d = document.createElement("div");
+    d.className = "sheet-sep";
+    d.textContent = text;
+    return d;
+  };
+
+  const panel = document.createElement("div");
+  panel.className = "sheet-panel";
+  const head = document.createElement("div");
+  head.className = "sheet-head";
+  head.innerHTML = "<span>WinzAMP</span>";
+  const x = document.createElement("button");
+  x.className = "sheet-x";
+  x.textContent = "✕";
+  x.addEventListener("click", close);
+  head.appendChild(x);
+  panel.appendChild(head);
+
+  panel.appendChild(sep("Skins"));
+  panel.appendChild(row("WinzAMP (built-in)", () => void applySkin("default"), currentSkin === "default"));
+  for (const s of MUSEUM_SKINS) {
+    panel.appendChild(row(s.name, () => void applySkin(s.md5), currentSkin === s.md5));
+  }
+  panel.appendChild(row("Load .wsz skin…", () => $("skin-file").click()));
+
+  panel.appendChild(sep("Open"));
+  panel.appendChild(row("Karaoke 🎤", openKaraoke));
+  panel.appendChild(row("Milkdrop 🌀", openMilkdrop));
+  panel.appendChild(row("Equalizer 🎛️", openEq));
+  panel.appendChild(row("Identify song 🎧", identify));
+  panel.appendChild(row("Auto-identify songs", toggleAutoIdentify, autoIdentify));
+
+  sheet.appendChild(panel);
+  sheet.addEventListener("click", (e) => {
+    if (e.target === sheet) close(); // tap the backdrop to dismiss
+  });
+  document.body.appendChild(sheet);
+}
+
+$("skin-menu").addEventListener("click", openSkinMenu);
 window.addEventListener("contextmenu", (e) => {
   e.preventDefault();
-  void showSkinMenu();
+  void openSkinMenu();
 });
 $<HTMLInputElement>("skin-file").addEventListener("change", (e) => {
   const input = e.target as HTMLInputElement;

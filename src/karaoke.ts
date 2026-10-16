@@ -156,9 +156,12 @@ function tick() {
 
 // --- wiring ---------------------------------------------------------------
 $("back").addEventListener("click", () => {
-  getCurrentWindow()
-    .close()
-    .catch(() => history.back());
+  // Close from the Rust side (reliable on mobile); fall back to the JS handle.
+  invoke("close_window", { label: getCurrentWindow().label }).catch(() =>
+    getCurrentWindow()
+      .close()
+      .catch(() => history.back()),
+  );
 });
 $("identify").addEventListener("click", () => {
   triedIdentifyFor = ""; // allow a manual retry even on the same raw track

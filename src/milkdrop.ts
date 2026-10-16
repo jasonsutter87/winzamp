@@ -2,6 +2,7 @@
 // Keys: → / space next preset, ← previous, H toggles auto-cycling.
 import butterchurnModule from "butterchurn";
 import butterchurnPresetsModule from "butterchurn-presets";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Frame } from "./frame";
@@ -59,9 +60,12 @@ window.addEventListener("keydown", (e) => {
 // a dash-mounted phone, so this is the only way to drive it there.
 const back = document.getElementById("back")!;
 back.addEventListener("click", () => {
-  getCurrentWindow()
-    .close()
-    .catch(() => history.back());
+  // Close from the Rust side (reliable on mobile); fall back to the JS handle.
+  invoke("close_window", { label: getCurrentWindow().label }).catch(() =>
+    getCurrentWindow()
+      .close()
+      .catch(() => history.back()),
+  );
 });
 
 let touchX = 0;
