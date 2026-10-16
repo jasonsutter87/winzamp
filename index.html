@@ -56,6 +56,14 @@
 
     <!-- Classic-skin mode: the whole main window drawn from a .wsz -->
     <canvas id="skin" title=""></canvas>
-    <input id="skin-file" type="file" accept=".wsz,.zip" hidden />
+    <!-- .wsz has no registered MIME type, so Android's file picker greys it out
+         with a strict accept. A .wsz is a zip; list zip + octet-stream (how a
+         downloaded .wsz usually registers) so the picker lets it through. -->
+    <input
+      id="skin-file"
+      type="file"
+      accept=".wsz,.zip,application/zip,application/x-zip-compressed,application/octet-stream"
+      hidden
+    />
   </body>
 </html>
