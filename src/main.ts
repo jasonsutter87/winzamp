@@ -163,7 +163,7 @@ function onSkinAction(a: Action) {
     case "options":
       return showSkinMenu();
     case "eq":
-      return openMilkdrop();
+      return openEq();
     case "pl":
       return openKaraoke();
     case "identify":
