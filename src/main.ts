@@ -130,7 +130,19 @@ function onFrame(frame: Frame) {
 const isPlaying = () => (np ? np.playing : hearing);
 const clockSeconds = () => (np ? liveElapsed() : playedMs / 1000);
 
-listen<Frame>("frame", (e) => onFrame(e.payload));
+// Pull one visualizer frame per animation frame (backpressure: at most one
+// request in flight, and the loop pauses when the window is hidden, so frames
+// never pile up the way a 60Hz push did).
+async function framePump() {
+  try {
+    const f = await invoke<Frame | null>("get_frame");
+    if (f) onFrame(f);
+  } catch {
+    // capture not up yet; try again next frame
+  }
+  requestAnimationFrame(framePump);
+}
+requestAnimationFrame(framePump);
 listen<CaptureInfo>("capture-started", (e) => showInfo(e.payload));
 listen<string>("capture-error", (e) => setMarquee(`Capture error: ${e.payload}`));
 listen<NowPlaying>("nowplaying", (e) => onNowPlaying(e.payload));

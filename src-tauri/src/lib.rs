@@ -112,6 +112,13 @@ fn identify_song(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Current visualizer frame, pulled by the frontend once per animation frame.
+/// Replaces a 60Hz push, which could flood a slow/backgrounded WebView.
+#[tauri::command]
+fn get_frame() -> Option<audio::Frame> {
+    audio::current_frame()
+}
+
 /// Press a system media key, so the skin's transport buttons drive whatever
 /// is playing (YouTube, Spotify, ...). `key`: "playpause" | "next" | "prev" | "stop".
 #[tauri::command]
@@ -225,6 +232,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             capture_info,
+            get_frame,
             now_playing,
             identify_song,
             open_milkdrop,

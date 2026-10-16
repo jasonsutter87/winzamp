@@ -3,7 +3,6 @@
 import butterchurnModule from "butterchurn";
 import butterchurnPresetsModule from "butterchurn-presets";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Frame } from "./frame";
 
@@ -133,14 +132,18 @@ const latest = {
   timeByteArrayL: new Uint8Array(1024).fill(128),
   timeByteArrayR: new Uint8Array(1024).fill(128),
 };
-listen<Frame>("frame", ({ payload }) => {
-  latest.timeByteArrayL.set(payload.l);
-  latest.timeByteArrayR.set(payload.r);
-  for (let i = 0; i < 1024; i++)
-    latest.timeByteArray[i] = (payload.l[i] + payload.r[i]) >> 1;
-});
-
-function tick() {
+// Pull a frame each render tick (backpressure; no 60Hz push to queue up).
+async function tick() {
+  try {
+    const f = await invoke<Frame | null>("get_frame");
+    if (f) {
+      latest.timeByteArrayL.set(f.l);
+      latest.timeByteArrayR.set(f.r);
+      for (let i = 0; i < 1024; i++) latest.timeByteArray[i] = (f.l[i] + f.r[i]) >> 1;
+    }
+  } catch {
+    // capture not up yet
+  }
   viz.render({ audioLevels: latest });
   requestAnimationFrame(tick);
 }

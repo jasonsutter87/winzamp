@@ -14,7 +14,6 @@ use tauri::{AppHandle, Emitter};
 
 /// Butterchurn (Milkdrop) wants exactly 1024 time-domain samples per channel.
 pub const FFT_SIZE: usize = 1024;
-const FRAME_INTERVAL: Duration = Duration::from_millis(16);
 /// dB floor for the spectrum; anything quieter reads as 0.
 const DB_FLOOR: f32 = -70.0;
 
@@ -212,42 +211,71 @@ fn run(app: &AppHandle) -> anyhow::Result<()> {
     let _ = app.emit("capture-started", info.clone());
     *app_info().lock().unwrap() = Some(info);
 
-    let fft = FftPlanner::<f32>::new().plan_fft_forward(FFT_SIZE);
-    let hann: Vec<f32> = (0..FFT_SIZE)
-        .map(|i| {
-            0.5 - 0.5 * (2.0 * std::f32::consts::PI * i as f32 / (FFT_SIZE - 1) as f32).cos()
+    // Just keep the loudness meter fresh for the auto-identifier. The visualizer
+    // frames are no longer *pushed* 60x/sec — the frontend *pulls* them with
+    // `get_frame` on its own animation clock (see current_frame). Pushing a
+    // 60Hz JSON payload over the IPC let a slow or backgrounded WebView (e.g. a
+    // car head unit) queue frames faster than it drained them, leaking memory
+    // without bound. Pulling has natural backpressure: one request in flight,
+    // and nothing accumulates while the view is hidden.
+    loop {
+        {
+            let (l, r) = ring.lock().unwrap().snapshot();
+            let rms = (l.iter().chain(&r).map(|s| s * s).sum::<f32>() / (2 * FFT_SIZE) as f32).sqrt();
+            LEVEL.store(rms.to_bits(), Ordering::Relaxed);
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+}
+
+/// Compute the current visualizer frame from the capture ring, on demand. The
+/// frontend calls this once per animation frame via the `get_frame` command, so
+/// work only happens while something is actually watching.
+pub fn current_frame() -> Option<Frame> {
+    let ring = BUFFERS.get()?;
+    let (l, r) = ring.lock().unwrap().snapshot();
+
+    let rms = (l.iter().chain(&r).map(|s| s * s).sum::<f32>() / (2 * FFT_SIZE) as f32).sqrt();
+    LEVEL.store(rms.to_bits(), Ordering::Relaxed);
+
+    // FFT plan and Hann window are reused across calls.
+    let fft = fft_plan();
+    let hann = hann_window();
+    let mut buf: Vec<Complex<f32>> = (0..FFT_SIZE)
+        .map(|i| Complex::new((l[i] + r[i]) * 0.5 * hann[i], 0.0))
+        .collect();
+    fft.process(&mut buf);
+    // Hann window halves the coherent gain, so a full-scale sine peaks near N/4.
+    let norm = FFT_SIZE as f32 / 4.0;
+    let spec = buf[..FFT_SIZE / 2]
+        .iter()
+        .map(|c| {
+            let db = 20.0 * (c.norm() / norm + 1e-9).log10();
+            ((db - DB_FLOOR) / -DB_FLOOR * 255.0).clamp(0.0, 255.0) as u8
         })
         .collect();
-    let mut buf = vec![Complex::new(0.0f32, 0.0); FFT_SIZE];
 
-    loop {
-        let (l, r) = ring.lock().unwrap().snapshot();
-        let rms = (l.iter().chain(&r).map(|s| s * s).sum::<f32>() / (2 * FFT_SIZE) as f32).sqrt();
-        LEVEL.store(rms.to_bits(), Ordering::Relaxed);
+    let to_u8 = |s: &f32| ((s.clamp(-1.0, 1.0) * 127.0) + 128.0) as u8;
+    Some(Frame {
+        l: l.iter().map(to_u8).collect(),
+        r: r.iter().map(to_u8).collect(),
+        spec,
+    })
+}
 
-        for (i, slot) in buf.iter_mut().enumerate() {
-            *slot = Complex::new((l[i] + r[i]) * 0.5 * hann[i], 0.0);
-        }
-        fft.process(&mut buf);
-        // Hann window halves the coherent gain, so a full-scale sine peaks near N/4.
-        let norm = FFT_SIZE as f32 / 4.0;
-        let spec = buf[..FFT_SIZE / 2]
-            .iter()
-            .map(|c| {
-                let db = 20.0 * (c.norm() / norm + 1e-9).log10();
-                ((db - DB_FLOOR) / -DB_FLOOR * 255.0).clamp(0.0, 255.0) as u8
-            })
-            .collect();
+fn fft_plan() -> std::sync::Arc<dyn rustfft::Fft<f32>> {
+    static PLAN: OnceLock<std::sync::Arc<dyn rustfft::Fft<f32>>> = OnceLock::new();
+    PLAN.get_or_init(|| FftPlanner::<f32>::new().plan_fft_forward(FFT_SIZE))
+        .clone()
+}
 
-        let to_u8 = |s: &f32| ((s.clamp(-1.0, 1.0) * 127.0) + 128.0) as u8;
-        let frame = Frame {
-            l: l.iter().map(to_u8).collect(),
-            r: r.iter().map(to_u8).collect(),
-            spec,
-        };
-        let _ = app.emit("frame", frame);
-        std::thread::sleep(FRAME_INTERVAL);
-    }
+fn hann_window() -> &'static [f32] {
+    static HANN: OnceLock<Vec<f32>> = OnceLock::new();
+    HANN.get_or_init(|| {
+        (0..FFT_SIZE)
+            .map(|i| 0.5 - 0.5 * (2.0 * std::f32::consts::PI * i as f32 / (FFT_SIZE - 1) as f32).cos())
+            .collect()
+    })
 }
 
 /// RMS of the latest analysis window (f32 bits), for the auto-identifier's
