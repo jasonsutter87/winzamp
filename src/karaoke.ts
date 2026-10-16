@@ -160,6 +160,37 @@ $("identify").addEventListener("click", () => {
   invoke("identify_song").catch(() => {});
 });
 
+// Car mode: fullscreen + big-text layout + keep the screen awake. Built for a
+// dash-mounted phone, but works the same on the desktop window tonight.
+let wakeLock: WakeLockSentinel | null = null;
+async function acquireWakeLock() {
+  try {
+    wakeLock = await navigator.wakeLock?.request("screen");
+  } catch {
+    /* no wake-lock support (or denied) — not fatal */
+  }
+}
+$("carmode").addEventListener("click", async () => {
+  const on = document.body.classList.toggle("car");
+  try {
+    if (on) await document.documentElement.requestFullscreen?.();
+    else if (document.fullscreenElement) await document.exitFullscreen?.();
+  } catch {
+    /* fullscreen can be refused without a user gesture — ignore */
+  }
+  if (on) await acquireWakeLock();
+  else {
+    await wakeLock?.release().catch(() => {});
+    wakeLock = null;
+  }
+});
+// A wake-lock drops when the tab is hidden; re-acquire when it returns.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && document.body.classList.contains("car")) {
+    void acquireWakeLock();
+  }
+});
+
 listen<NowPlaying>("nowplaying", (e) => onNowPlaying(e.payload));
 listen<NowPlaying>("identified", (e) => onIdentified(e.payload));
 listen<IdentifyStatus>("identify-status", (e) => {

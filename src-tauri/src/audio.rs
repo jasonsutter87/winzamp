@@ -98,14 +98,39 @@ pub fn start(app: AppHandle) {
     });
 }
 
-fn run(app: &AppHandle) -> anyhow::Result<()> {
-    let device = cpal::default_host()
-        .default_output_device()
-        .ok_or_else(|| anyhow::anyhow!("no output device found"))?;
-    let supported = device.default_output_config()?;
-    if supported.sample_format() != SampleFormat::F32 {
-        anyhow::bail!("unsupported sample format: {:?}", supported.sample_format());
+/// Pick the capture device and its config. Desktop taps whatever is coming out
+/// of the speakers (cpal opens an input stream on the default *output* device —
+/// a loopback tap). Android has no such loopback, so it opens the default
+/// *input* device (the mic): in a car that's exactly what you want — it hears
+/// the stereo / FM radio, the universal path the identify pipeline already
+/// expects. Either way the rest of this file is identical.
+fn open_capture(host: &cpal::Host) -> anyhow::Result<(cpal::Device, cpal::SupportedStreamConfig)> {
+    #[cfg(not(target_os = "android"))]
+    {
+        let device = host
+            .default_output_device()
+            .ok_or_else(|| anyhow::anyhow!("no output device found"))?;
+        let supported = device.default_output_config()?;
+        Ok((device, supported))
     }
+    #[cfg(target_os = "android")]
+    {
+        let device = host
+            .default_input_device()
+            .ok_or_else(|| anyhow::anyhow!("no microphone found"))?;
+        let supported = device.default_input_config()?;
+        Ok((device, supported))
+    }
+}
+
+fn on_stream_err<E: std::fmt::Display>(e: E) {
+    eprintln!("audio stream error: {e}");
+}
+
+fn run(app: &AppHandle) -> anyhow::Result<()> {
+    let host = cpal::default_host();
+    let (device, supported) = open_capture(&host)?;
+    let fmt = supported.sample_format();
     let channels = supported.channels() as usize;
     let info = CaptureInfo {
         device: device
@@ -128,20 +153,38 @@ fn run(app: &AppHandle) -> anyhow::Result<()> {
     }));
     let _ = BUFFERS.set(ring.clone());
 
+    // Desktop loopback hands us f32; a phone mic usually hands us i16. Accept
+    // both — everything downstream works in f32 either way.
     let writer = ring.clone();
-    let stream = device.build_input_stream(
-        config,
-        move |data: &[f32], _| {
-            let mut ring = writer.lock().unwrap();
-            for frame in data.chunks_exact(channels) {
-                let l = frame[0];
-                let r = if channels > 1 { frame[1] } else { l };
-                ring.push(l, r);
-            }
-        },
-        |e| eprintln!("audio stream error: {e}"),
-        None,
-    )?;
+    let stream = match fmt {
+        SampleFormat::F32 => device.build_input_stream(
+            config,
+            move |data: &[f32], _| {
+                let mut ring = writer.lock().unwrap();
+                for frame in data.chunks_exact(channels) {
+                    let l = frame[0];
+                    let r = if channels > 1 { frame[1] } else { l };
+                    ring.push(l, r);
+                }
+            },
+            on_stream_err,
+            None,
+        )?,
+        SampleFormat::I16 => device.build_input_stream(
+            config,
+            move |data: &[i16], _| {
+                let mut ring = writer.lock().unwrap();
+                for frame in data.chunks_exact(channels) {
+                    let l = frame[0] as f32 / 32768.0;
+                    let r = if channels > 1 { frame[1] as f32 / 32768.0 } else { l };
+                    ring.push(l, r);
+                }
+            },
+            on_stream_err,
+            None,
+        )?,
+        other => anyhow::bail!("unsupported sample format: {other:?}"),
+    };
     stream.play()?;
     let _ = app.emit("capture-started", info.clone());
     *app_info().lock().unwrap() = Some(info);

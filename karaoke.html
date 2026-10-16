@@ -46,9 +46,27 @@
         padding: 5px 12px;
         cursor: pointer;
       }
-      #identify:active {
+      #identify:active, #carmode:active {
         background: rgba(53, 224, 255, 0.28);
       }
+      #carmode {
+        font: 600 12px "Helvetica Neue", Arial, sans-serif;
+        color: #cfe8ff;
+        background: rgba(53, 224, 255, 0.12);
+        border: 1px solid rgba(53, 224, 255, 0.4);
+        border-radius: 999px;
+        padding: 5px 12px;
+        cursor: pointer;
+      }
+      /* Car mode: dash-mounted, read-from-the-driver's-seat sizing. */
+      body.car header { padding: 10px 28px; }
+      body.car #track { font-size: 26px; }
+      body.car #artist { font-size: 18px; }
+      body.car #identify, body.car #carmode { padding: 10px 18px; font-size: 15px; }
+      body.car #src { display: none; }
+      body.car .line { font-size: 52px; line-height: 1.45; }
+      body.car .line.active { text-shadow: 0 0 34px var(--glow); }
+      body.car #msg { font-size: 30px; }
       #src {
         font-size: 11px;
         color: var(--dim);
@@ -117,6 +135,7 @@
         <span id="track">—</span>
         <span id="artist"></span>
         <button id="identify" title="Identify what's playing (ACRCloud)">🎧 Identify</button>
+        <button id="carmode" title="Car mode — fullscreen, big text, screen stays awake">🚗 Car</button>
         <span id="src"></span>
       </header>
       <div id="scroll">
