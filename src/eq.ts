@@ -4,6 +4,7 @@
 //   eq_set(preamp, bands)         — update gains while it's running
 // Gains are in dB; bands are the classic Winamp centers.
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const BAND_LABELS = ["60", "170", "310", "600", "1K", "3K", "6K", "12K", "14K", "16K"];
 const RANGE = 12; // ±dB
@@ -21,6 +22,24 @@ const PRESETS: Record<string, Preset> = {
 };
 
 const $ = (id: string) => document.getElementById(id)!;
+
+// On a phone these screens are pages in one webview (multi-window doesn't work
+// on Android), so Back navigates home; on desktop they're real windows, so
+// Back closes this one.
+const isAndroid = /Android/i.test(navigator.userAgent);
+function goBack() {
+  if (isAndroid) {
+    window.location.assign("index.html");
+    return;
+  }
+  invoke("close_window", { label: getCurrentWindow().label }).catch(() =>
+    getCurrentWindow()
+      .close()
+      .catch(() => history.back()),
+  );
+}
+$("back").addEventListener("click", goBack);
+
 const bandsEl = $("bands");
 const powerBtn = $("power") as HTMLButtonElement;
 const presetSel = $("preset") as HTMLSelectElement;
@@ -109,7 +128,6 @@ BAND_LABELS.forEach((l) => sliders.push(makeSlot(l)));
 // A phone has no system-audio EQ hook (no Core Audio process tap like macOS,
 // no Equalizer APO like Windows), so the engine genuinely can't run here. Say
 // so plainly rather than present a toggle that errors when tapped.
-const isAndroid = /Android/i.test(navigator.userAgent);
 if (isAndroid) {
   powerBtn.disabled = true;
   presetSel.disabled = true;

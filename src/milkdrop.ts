@@ -60,7 +60,12 @@ window.addEventListener("keydown", (e) => {
 // a dash-mounted phone, so this is the only way to drive it there.
 const back = document.getElementById("back")!;
 back.addEventListener("click", () => {
-  // Close from the Rust side (reliable on mobile); fall back to the JS handle.
+  // On Android these screens are pages in one webview (multi-window doesn't
+  // work there), so Back navigates home; on desktop, close this window.
+  if (/Android/i.test(navigator.userAgent)) {
+    window.location.assign("index.html");
+    return;
+  }
   invoke("close_window", { label: getCurrentWindow().label }).catch(() =>
     getCurrentWindow()
       .close()

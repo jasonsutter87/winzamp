@@ -18,9 +18,13 @@ function cycleVis() {
   vis.mode = MODES[(MODES.indexOf(vis.mode) + 1) % MODES.length];
   $("vis-mode").textContent = `VIS: ${MODE_LABEL[vis.mode]}`;
 }
-const openMilkdrop = () => invoke("open_milkdrop");
-const openKaraoke = () => invoke("open_karaoke");
-const openEq = () => invoke("open_eq");
+// Android can't do multiple windows, so on mobile the secondary screens are
+// just other pages in this one webview (Tauri events keep flowing across a
+// navigation). On desktop they stay real windows.
+const isMobile = /Android/i.test(navigator.userAgent);
+const openMilkdrop = () => (isMobile ? window.location.assign("milkdrop.html") : void invoke("open_milkdrop"));
+const openKaraoke = () => (isMobile ? window.location.assign("karaoke.html") : void invoke("open_karaoke"));
+const openEq = () => (isMobile ? window.location.assign("eq.html") : void invoke("open_eq"));
 const identify = () => invoke("identify_song").catch(() => {});
 
 $("vis").addEventListener("click", cycleVis);
@@ -349,7 +353,6 @@ async function showSkinMenu() {
 // Touch devices (Android) have no right-click and native menus don't render,
 // so the menu becomes an in-page sheet — which also doubles as the main nav on
 // a phone (skins + open Milkdrop/Karaoke/EQ/Identify).
-const isMobile = /Android/i.test(navigator.userAgent);
 const openSkinMenu = () => (isMobile ? showSkinSheet() : showSkinMenu());
 
 function showSkinSheet() {
