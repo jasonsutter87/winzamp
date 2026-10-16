@@ -20,12 +20,14 @@ function cycleVis() {
 }
 const openMilkdrop = () => invoke("open_milkdrop");
 const openKaraoke = () => invoke("open_karaoke");
+const openEq = () => invoke("open_eq");
 const identify = () => invoke("identify_song").catch(() => {});
 
 $("vis").addEventListener("click", cycleVis);
 $("vis-mode").addEventListener("click", cycleVis);
 $("milkdrop").addEventListener("click", openMilkdrop);
 $("karaoke").addEventListener("click", openKaraoke);
+$("eq").addEventListener("click", openEq);
 $("identify").addEventListener("click", identify);
 $("close").addEventListener("click", () => getCurrentWindow().close());
 $("minimize").addEventListener("click", () => getCurrentWindow().minimize());
@@ -161,7 +163,7 @@ function onSkinAction(a: Action) {
     case "options":
       return showSkinMenu();
     case "eq":
-      return openMilkdrop();
+      return openEq();
     case "pl":
       return openKaraoke();
     case "identify":
@@ -335,6 +337,7 @@ async function showSkinMenu() {
     await MenuItem.new({ text: "Load .wsz skin…", action: () => $("skin-file").click() }),
     await MenuItem.new({ text: "Browse more at skins.webamp.org", action: () => void openUrl("https://skins.webamp.org/") }),
     await PredefinedMenuItem.new({ item: "Separator" }),
+    await MenuItem.new({ text: "Equalizer", action: () => void openEq() }),
     await MenuItem.new({ text: "Milkdrop", action: () => void openMilkdrop() }),
     await MenuItem.new({ text: "Karaoke", action: () => void openKaraoke() }),
     await MenuItem.new({ text: "Identify song", action: () => void identify() }),

@@ -17,6 +17,7 @@ export default defineConfig(() => ({
         main: "index.html",
         milkdrop: "milkdrop.html",
         karaoke: "karaoke.html",
+        eq: "eq.html",
       },
     },
   },
