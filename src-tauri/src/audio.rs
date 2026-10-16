@@ -91,6 +91,24 @@ pub fn id_snapshot() -> Option<(Vec<f32>, u32)> {
 /// Spawns the capture thread. It owns the cpal stream for the life of the app.
 pub fn start(app: AppHandle) {
     std::thread::spawn(move || {
+        // On Android the mic isn't available until the user grants RECORD_AUDIO
+        // (the dialog shows at launch). Retry so capture begins the moment the
+        // permission is accepted, instead of failing once on startup.
+        #[cfg(target_os = "android")]
+        {
+            for attempt in 0..30u32 {
+                match run(&app) {
+                    Ok(()) => return,
+                    Err(e) => eprintln!("capture attempt {attempt} failed: {e:#}"),
+                }
+                std::thread::sleep(Duration::from_secs(1));
+            }
+            let _ = app.emit(
+                "capture-error",
+                "Microphone unavailable — grant mic permission and reopen WinzAMP.".to_string(),
+            );
+        }
+        #[cfg(not(target_os = "android"))]
         if let Err(e) = run(&app) {
             eprintln!("capture failed: {e:#}");
             let _ = app.emit("capture-error", format!("{e:#}"));

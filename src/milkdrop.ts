@@ -3,6 +3,7 @@
 import butterchurnModule from "butterchurn";
 import butterchurnPresetsModule from "butterchurn-presets";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Frame } from "./frame";
 
 // Both packages are webpack UMD builds of ES modules, so depending on the
@@ -52,6 +53,62 @@ window.addEventListener("keydown", (e) => {
   else if (e.key === "ArrowLeft") loadPreset(index - 1);
   else if (e.key.toLowerCase() === "h") autoCycle = !autoCycle;
 });
+
+// Touch controls (phone): swipe left/right for next/previous preset, a plain
+// tap for next, a two-finger tap toggles auto-cycle. Keyboard has no meaning on
+// a dash-mounted phone, so this is the only way to drive it there.
+const back = document.getElementById("back")!;
+back.addEventListener("click", () => {
+  getCurrentWindow()
+    .close()
+    .catch(() => history.back());
+});
+
+let touchX = 0;
+let touchY = 0;
+let touchMoved = false;
+const canvasEl = canvas;
+canvasEl.addEventListener(
+  "touchstart",
+  (e) => {
+    if (e.touches.length >= 2) {
+      autoCycle = !autoCycle;
+      label.textContent = autoCycle ? "auto-cycle on" : "auto-cycle off";
+      label.classList.add("show");
+      clearTimeout(labelTimer);
+      labelTimer = window.setTimeout(() => label.classList.remove("show"), 1500);
+      return;
+    }
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+    touchMoved = false;
+  },
+  { passive: true },
+);
+canvasEl.addEventListener(
+  "touchend",
+  (e) => {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchX;
+    const dy = t.clientY - touchY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      loadPreset(dx < 0 ? index + 1 : index - 1); // swipe left = next
+    } else if (!touchMoved) {
+      loadPreset(index + 1); // tap = next
+    }
+  },
+  { passive: true },
+);
+canvasEl.addEventListener(
+  "touchmove",
+  (e) => {
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - touchX) > 10 || Math.abs(t.clientY - touchY) > 10) {
+      touchMoved = true;
+    }
+  },
+  { passive: true },
+);
 
 window.addEventListener("resize", () => {
   const { width, height } = devicePx();

@@ -46,8 +46,21 @@
         padding: 5px 12px;
         cursor: pointer;
       }
-      #identify:active, #carmode:active {
+      #identify:active, #carmode:active, #back:active {
         background: rgba(53, 224, 255, 0.28);
+      }
+      #back {
+        flex: 0 0 auto;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        font: 600 20px "Helvetica Neue", Arial, sans-serif;
+        color: #cfe8ff;
+        background: rgba(53, 224, 255, 0.12);
+        border: 1px solid rgba(53, 224, 255, 0.4);
+        cursor: pointer;
+        padding: 0;
+        line-height: 32px;
       }
       #carmode {
         font: 600 12px "Helvetica Neue", Arial, sans-serif;
@@ -132,6 +145,7 @@
   <body>
     <div id="stage">
       <header>
+        <button id="back" title="Back">‹</button>
         <span id="track">—</span>
         <span id="artist"></span>
         <button id="identify" title="Identify what's playing (ACRCloud)">🎧 Identify</button>

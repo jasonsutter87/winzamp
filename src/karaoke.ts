@@ -8,6 +8,7 @@
 // extrapolates from the fingerprint's play-offset.
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { IdentifyStatus, NowPlaying } from "./frame";
 import { fetchLyricsSmart, LyricsBusy, type Lyrics } from "./lyrics";
 
@@ -154,6 +155,11 @@ function tick() {
 }
 
 // --- wiring ---------------------------------------------------------------
+$("back").addEventListener("click", () => {
+  getCurrentWindow()
+    .close()
+    .catch(() => history.back());
+});
 $("identify").addEventListener("click", () => {
   triedIdentifyFor = ""; // allow a manual retry even on the same raw track
   showMessage("🎧 Listening…");

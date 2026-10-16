@@ -30,10 +30,32 @@
       #preset.show {
         opacity: 0.85;
       }
+      #back {
+        position: fixed;
+        left: 10px;
+        top: 10px;
+        z-index: 2;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(0, 0, 0, 0.45);
+        color: #fff;
+        font-size: 22px;
+        line-height: 44px;
+        text-align: center;
+        cursor: pointer;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      #back:active {
+        background: rgba(0, 0, 0, 0.75);
+      }
     </style>
     <script type="module" src="/src/milkdrop.ts" defer></script>
   </head>
   <body>
+    <button id="back" title="Back">‹</button>
     <canvas id="canvas"></canvas>
     <div id="preset"></div>
   </body>
