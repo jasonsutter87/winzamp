@@ -1,9 +1,13 @@
 # WinzAMP
 
-A modern Winamp that plays nothing itself: it taps whatever your Mac is playing
-(YouTube, Spotify, Qobuz, anything) and runs classic visualizers on it.
+A modern Winamp that plays nothing itself: it taps whatever your computer is
+playing (YouTube, Spotify, Qobuz, anything) and runs classic visualizers on it.
 
-- **Capture:** cpal loopback on the default output device → Core Audio process tap (macOS 14.6+). No APIs, no virtual audio device.
+**Runs on macOS, Windows, and Linux.** Capture, visualizers, skins, song
+identification, and karaoke are cross-platform; the Now Playing marquee and the
+real EQ are macOS-only for now (Windows/Linux versions are on the roadmap).
+
+- **Capture:** cpal loopback on the default output device — a Core Audio process tap on macOS (14.6+), WASAPI loopback on Windows, a PulseAudio monitor source on Linux. No service APIs, no virtual audio device to install.
 - **Classic vis:** 76×16 spectrum analyzer + oscilloscope with the default `viscolor.txt` palette. Click it to cycle.
 - **Milkdrop:** Butterchurn fed the raw waveform. `→`/space next preset, `←` previous, `H` toggles auto-cycle.
 - **Now Playing marquee:** real artist/title and song position for whatever is playing (YouTube, Spotify, …), read from macOS's Now Playing system.
@@ -11,17 +15,28 @@ A modern Winamp that plays nothing itself: it taps whatever your Mac is playing
 - **Identify (🎧):** fingerprints the captured audio via Shazam (no key needed) to get the real artist/title — the universal path that also works for FM radio and on Android, where there's no Now Playing metadata to read.
 - **Equalizer (EQ):** a real, driver-free 10-band EQ + preamp that actually shapes the sound you hear — no BlackHole/virtual device. It uses a macOS 14.2+ Core Audio process tap: WinzAMP mutes the tapped apps, runs their audio through its biquad bands, and re-outputs to your speakers (excluding its own process so there's no feedback loop). macOS-only; opt-in (off until you turn it on). See `src-tauri/src/eqengine.rs`.
 
+## Screenshots
+
+|  |  |
+|---|---|
+| ![Main player — built-in skin](docs/screenshots/player-winzamp.png) <br> **Built-in skin** — spectrum + scope, Now Playing marquee | ![Main player — Winamp Classic skin](docs/screenshots/player-classic.png) <br> **Classic `.wsz` skins** — the real Winamp 2.91 look |
+| ![A fun skin](docs/screenshots/skin-fun.png) <br> **Skin anything** — Zelda, Pip-Boy, Mario… drop in any `.wsz` | ![Equalizer](docs/screenshots/eq.png) <br> **Real EQ** — 10 bands + preamp that actually shape the sound |
+| ![Milkdrop visualizer](docs/screenshots/milkdrop.png) <br> **Milkdrop** — Butterchurn fed the live waveform | ![Karaoke lyrics](docs/screenshots/karaoke.png) <br> **Karaoke** — synced lyrics scrolled in time |
+
+> Capturing these is scripted: run `bash scripts/screenshots.sh` and click each window when prompted.
+
 ## Requirements
-- macOS 14.6+ (Apple Silicon or Intel), Xcode Command Line Tools (`xcode-select --install`) for `clang`
-- Node 18+ and a Rust toolchain
-- `/usr/bin/perl` (ships with macOS) — used by the Now Playing bridge
+- **Node 18+** and a **Rust toolchain** (all platforms)
+- **macOS:** 14.6+ (Apple Silicon or Intel), Xcode Command Line Tools (`xcode-select --install`) for `clang`; `/usr/bin/perl` (ships with macOS) powers the Now Playing bridge
+- **Windows:** 10/11 with the MSVC build tools and WebView2 (preinstalled on current Windows)
+- **Linux:** the usual Tauri deps (`webkit2gtk`, `libayatana-appindicator`, …) plus PulseAudio/PipeWire for the audio monitor source
 
 ```sh
 npm install
 npm run tauri dev
 ```
 
-First launch asks for **System Audio Recording** permission (in dev, macOS attributes it to your terminal/IDE).
+First launch asks for **System Audio Recording** permission (on macOS; in dev it's attributed to your terminal/IDE). Prebuilt installers for macOS and Windows are attached to each [GitHub Release](../../releases).
 
 ## Classic skins (.wsz)
 
