@@ -5,6 +5,9 @@ mod shazam;
 mod volume;
 #[cfg(target_os = "macos")]
 mod eqengine;
+#[cfg(target_os = "windows")]
+#[path = "eqengine_win.rs"]
+mod eqengine;
 #[cfg(target_os = "macos")]
 mod nowplaying;
 
@@ -139,48 +142,49 @@ async fn open_karaoke(app: AppHandle) -> tauri::Result<()> {
 }
 
 // --- Equalizer -------------------------------------------------------------
-// Real, driver-free system EQ (macOS only). `bands` is 10 gains in dB (classic
-// Winamp centers); `preamp` is an overall gain in dB.
+// Real system EQ: a driver-free Core Audio tap on macOS, an Equalizer APO
+// bridge on Windows. `bands` is 10 gains in dB (classic Winamp centers);
+// `preamp` is an overall gain in dB.
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn to_bands(bands: &[f32]) -> Result<[f32; eqengine::BANDS], String> {
     bands
         .try_into()
         .map_err(|_| format!("expected {} band gains", eqengine::BANDS))
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[tauri::command]
 fn eq_enable(on: bool, preamp: f32, bands: Vec<f32>) -> Result<(), String> {
     eqengine::enable(on, preamp, to_bands(&bands)?)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[tauri::command]
 fn eq_set(preamp: f32, bands: Vec<f32>) -> Result<(), String> {
     eqengine::set_gains(preamp, to_bands(&bands)?);
     Ok(())
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[tauri::command]
 fn eq_running() -> bool {
     eqengine::is_running()
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 fn eq_enable(_on: bool, _preamp: f32, _bands: Vec<f32>) -> Result<(), String> {
-    Err("the equalizer is macOS-only for now".into())
+    Err("the equalizer isn't available on this platform yet".into())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 fn eq_set(_preamp: f32, _bands: Vec<f32>) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 fn eq_running() -> bool {
     false

@@ -4,8 +4,9 @@ A modern Winamp that plays nothing itself: it taps whatever your computer is
 playing (YouTube, Spotify, Qobuz, anything) and runs classic visualizers on it.
 
 **Runs on macOS, Windows, and Linux.** Capture, visualizers, skins, song
-identification, and karaoke are cross-platform; the Now Playing marquee and the
-real EQ are macOS-only for now (Windows/Linux versions are on the roadmap).
+identification, and karaoke are cross-platform. The real EQ works on macOS
+(built-in) and Windows (via Equalizer APO); the Now Playing marquee is macOS-only
+for now.
 
 - **Capture:** cpal loopback on the default output device — a Core Audio process tap on macOS (14.6+), WASAPI loopback on Windows, a PulseAudio monitor source on Linux. No service APIs, no virtual audio device to install.
 - **Classic vis:** 76×16 spectrum analyzer + oscilloscope with the default `viscolor.txt` palette. Click it to cycle.
@@ -13,7 +14,10 @@ real EQ are macOS-only for now (Windows/Linux versions are on the roadmap).
 - **Now Playing marquee:** real artist/title and song position for whatever is playing (YouTube, Spotify, …), read from macOS's Now Playing system.
 - **Karaoke mode (🎤):** synced lyrics (LRCLIB) scrolled in time with the song.
 - **Identify (🎧):** fingerprints the captured audio via Shazam (no key needed) to get the real artist/title — the universal path that also works for FM radio and on Android, where there's no Now Playing metadata to read.
-- **Equalizer (EQ):** a real, driver-free 10-band EQ + preamp that actually shapes the sound you hear — no BlackHole/virtual device. It uses a macOS 14.2+ Core Audio process tap: WinzAMP mutes the tapped apps, runs their audio through its biquad bands, and re-outputs to your speakers (excluding its own process so there's no feedback loop). macOS-only; opt-in (off until you turn it on). See `src-tauri/src/eqengine.rs`.
+- **Equalizer (EQ):** a real 10-band EQ + preamp that actually shapes the sound you hear.
+  - **macOS:** driver-free — a macOS 14.2+ Core Audio process tap mutes the tapped apps, runs their audio through WinzAMP's biquad bands, and re-outputs to your speakers (excluding WinzAMP's own process, so no feedback). No BlackHole/virtual device. See `src-tauri/src/eqengine.rs`.
+  - **Windows:** a front-end over [Equalizer APO](https://equalizerapo.com) (free, open-source) — WinzAMP's sliders write its config, which it hot-reloads live. Install Equalizer APO once (run its Configurator for your output device); then the EQ window works the same. See `src-tauri/src/eqengine_win.rs`.
+  - Opt-in (off until you turn it on).
 
 ## Screenshots
 
