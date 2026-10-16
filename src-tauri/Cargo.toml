@@ -34,6 +34,17 @@ base64 = "0.22"
 crc32fast = "1"
 uuid = { version = "1", features = ["v4"] }
 
+# Real system-audio EQ (macOS): a muted Core Audio process tap + an aggregate
+# device whose output is the real speakers, driven by one IOProc that runs the
+# biquad bands. Same objc2 CoreAudio crates cpal already compiles, so no new
+# heavy build. All used only behind cfg(target_os = "macos").
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-core-audio = { version = "0.3", default-features = false, features = ["std", "objc2", "objc2-foundation", "objc2-core-audio-types", "AudioHardware", "AudioHardwareDeprecated"] }
+objc2-core-audio-types = { version = "0.3", default-features = false, features = ["std", "objc2", "CoreAudioBaseTypes"] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "objc2", "CFBase", "CFArray", "CFDictionary", "CFString"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSString", "NSValue", "NSDictionary"] }
+
 # Skin transport buttons send system media keys (play/pause, next, ...).
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_UI_Input_KeyboardAndMouse"] }

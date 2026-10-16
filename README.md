@@ -9,6 +9,7 @@ A modern Winamp that plays nothing itself: it taps whatever your Mac is playing
 - **Now Playing marquee:** real artist/title and song position for whatever is playing (YouTube, Spotify, …), read from macOS's Now Playing system.
 - **Karaoke mode (🎤):** synced lyrics (LRCLIB) scrolled in time with the song.
 - **Identify (🎧):** fingerprints the captured audio via Shazam (no key needed) to get the real artist/title — the universal path that also works for FM radio and on Android, where there's no Now Playing metadata to read.
+- **Equalizer (EQ):** a real, driver-free 10-band EQ + preamp that actually shapes the sound you hear — no BlackHole/virtual device. It uses a macOS 14.2+ Core Audio process tap: WinzAMP mutes the tapped apps, runs their audio through its biquad bands, and re-outputs to your speakers (excluding its own process so there's no feedback loop). macOS-only; opt-in (off until you turn it on). See `src-tauri/src/eqengine.rs`.
 
 ## Requirements
 - macOS 14.6+ (Apple Silicon or Intel), Xcode Command Line Tools (`xcode-select --install`) for `clang`

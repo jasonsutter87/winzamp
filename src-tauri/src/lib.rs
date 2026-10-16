@@ -4,6 +4,8 @@ mod identify;
 mod shazam;
 mod volume;
 #[cfg(target_os = "macos")]
+mod eqengine;
+#[cfg(target_os = "macos")]
 mod nowplaying;
 
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -36,6 +38,19 @@ async fn open_milkdrop(app: AppHandle) -> tauri::Result<()> {
         .title("WinzAMP — Milkdrop")
         .inner_size(800.0, 600.0)
         .min_inner_size(320.0, 240.0)
+        .build()?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn open_eq(app: AppHandle) -> tauri::Result<()> {
+    if let Some(win) = app.get_webview_window("eq") {
+        return win.set_focus();
+    }
+    WebviewWindowBuilder::new(&app, "eq", WebviewUrl::App("eq.html".into()))
+        .title("WinzAMP — Equalizer")
+        .inner_size(480.0, 300.0)
+        .min_inner_size(420.0, 260.0)
         .build()?;
     Ok(())
 }
@@ -123,6 +138,54 @@ async fn open_karaoke(app: AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+// --- Equalizer -------------------------------------------------------------
+// Real, driver-free system EQ (macOS only). `bands` is 10 gains in dB (classic
+// Winamp centers); `preamp` is an overall gain in dB.
+
+#[cfg(target_os = "macos")]
+fn to_bands(bands: &[f32]) -> Result<[f32; eqengine::BANDS], String> {
+    bands
+        .try_into()
+        .map_err(|_| format!("expected {} band gains", eqengine::BANDS))
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn eq_enable(on: bool, preamp: f32, bands: Vec<f32>) -> Result<(), String> {
+    eqengine::enable(on, preamp, to_bands(&bands)?)
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn eq_set(preamp: f32, bands: Vec<f32>) -> Result<(), String> {
+    eqengine::set_gains(preamp, to_bands(&bands)?);
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn eq_running() -> bool {
+    eqengine::is_running()
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn eq_enable(_on: bool, _preamp: f32, _bands: Vec<f32>) -> Result<(), String> {
+    Err("the equalizer is macOS-only for now".into())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn eq_set(_preamp: f32, _bands: Vec<f32>) -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn eq_running() -> bool {
+    false
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -140,11 +203,15 @@ pub fn run() {
             identify_song,
             open_milkdrop,
             open_karaoke,
+            open_eq,
             media_key,
             autoid::set_auto_identify,
             volume::get_volume,
             volume::set_volume,
-            volume::set_balance
+            volume::set_balance,
+            eq_enable,
+            eq_set,
+            eq_running
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

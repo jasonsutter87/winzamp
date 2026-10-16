@@ -20,12 +20,14 @@ function cycleVis() {
 }
 const openMilkdrop = () => invoke("open_milkdrop");
 const openKaraoke = () => invoke("open_karaoke");
+const openEq = () => invoke("open_eq");
 const identify = () => invoke("identify_song").catch(() => {});
 
 $("vis").addEventListener("click", cycleVis);
 $("vis-mode").addEventListener("click", cycleVis);
 $("milkdrop").addEventListener("click", openMilkdrop);
 $("karaoke").addEventListener("click", openKaraoke);
+$("eq").addEventListener("click", openEq);
 $("identify").addEventListener("click", identify);
 $("close").addEventListener("click", () => getCurrentWindow().close());
 $("minimize").addEventListener("click", () => getCurrentWindow().minimize());

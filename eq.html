@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>WinzAMP — Equalizer</title>
+    <style>
+      :root {
+        --bg: #11111c;
+        --panel: #1a1a2b;
+        --line: #2a2a44;
+        --glow: #35e0ff;
+        --text: #cfe8ff;
+        --dim: #6a6a90;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: radial-gradient(120% 90% at 50% 0%, #1b1b3a, var(--bg));
+        color: var(--text);
+        font: 12px/1.3 "Helvetica Neue", Arial, sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #wrap { padding: 12px 14px; height: 100%; display: flex; flex-direction: column; gap: 10px; }
+      header { display: flex; align-items: center; gap: 10px; }
+      h1 { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin: 0; color: var(--dim); }
+      .spacer { flex: 1; }
+      button, select {
+        font: 600 11px "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+        background: rgba(53, 224, 255, 0.1);
+        border: 1px solid rgba(53, 224, 255, 0.35);
+        border-radius: 6px;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      #power.on { background: var(--glow); color: #04121a; border-color: var(--glow); }
+      select { background: var(--panel); }
+      #bands {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 54px repeat(10, 1fr);
+        gap: 6px;
+        align-items: stretch;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 10px 8px;
+      }
+      .slot { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 0; }
+      .slot.preamp { border-right: 1px solid var(--line); }
+      input[type="range"] {
+        -webkit-appearance: slider-vertical;
+        writing-mode: vertical-lr;
+        direction: rtl;
+        width: 22px;
+        flex: 1;
+        min-height: 120px;
+        accent-color: var(--glow);
+      }
+      .lbl { font-size: 10px; color: var(--dim); white-space: nowrap; }
+      .val { font-size: 10px; color: var(--text); font-variant-numeric: tabular-nums; }
+      #status { font-size: 10px; color: var(--dim); min-height: 12px; }
+    </style>
+    <script type="module" src="/src/eq.ts" defer></script>
+  </head>
+  <body>
+    <div id="wrap">
+      <header>
+        <h1>Equalizer</h1>
+        <div class="spacer"></div>
+        <select id="preset" title="Preset">
+          <option value="flat">Flat</option>
+          <option value="rock">Rock</option>
+          <option value="pop">Pop</option>
+          <option value="bass">Bass Boost</option>
+          <option value="treble">Treble Boost</option>
+          <option value="vocal">Vocal</option>
+          <option value="loudness">Loudness</option>
+        </select>
+        <button id="power" title="Toggle the equalizer">OFF</button>
+      </header>
+      <div id="bands"><!-- filled by eq.ts --></div>
+      <div id="status"></div>
+    </div>
+  </body>
+</html>

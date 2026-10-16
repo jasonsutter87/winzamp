@@ -5,7 +5,8 @@
   "windows": [
     "main",
     "milkdrop",
-    "karaoke"
+    "karaoke",
+    "eq"
   ],
   "permissions": [
     "core:default",
