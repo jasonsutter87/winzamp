@@ -4,6 +4,7 @@
 //   eq_set(preamp, bands)         — update gains while it's running
 // Gains are in dB; bands are the classic Winamp centers.
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const BAND_LABELS = ["60", "170", "310", "600", "1K", "3K", "6K", "12K", "14K", "16K"];
 const RANGE = 12; // ±dB
@@ -21,6 +22,24 @@ const PRESETS: Record<string, Preset> = {
 };
 
 const $ = (id: string) => document.getElementById(id)!;
+
+// On a phone these screens are pages in one webview (multi-window doesn't work
+// on Android), so Back navigates home; on desktop they're real windows, so
+// Back closes this one.
+const isAndroid = /Android/i.test(navigator.userAgent);
+function goBack() {
+  if (isAndroid) {
+    window.location.assign("index.html");
+    return;
+  }
+  invoke("close_window", { label: getCurrentWindow().label }).catch(() =>
+    getCurrentWindow()
+      .close()
+      .catch(() => history.back()),
+  );
+}
+$("back").addEventListener("click", goBack);
+
 const bandsEl = $("bands");
 const powerBtn = $("power") as HTMLButtonElement;
 const presetSel = $("preset") as HTMLSelectElement;
@@ -106,14 +125,24 @@ function status(msg: string) {
 sliders.push(makeSlot("PRE", true));
 BAND_LABELS.forEach((l) => sliders.push(makeSlot(l)));
 
-powerBtn.addEventListener("click", () => setPower(!on));
-presetSel.addEventListener("change", () => setPreset(PRESETS[presetSel.value] ?? PRESETS.flat));
+// A phone has no system-audio EQ hook (no Core Audio process tap like macOS,
+// no Equalizer APO like Windows), so the engine genuinely can't run here. Say
+// so plainly rather than present a toggle that errors when tapped.
+if (isAndroid) {
+  powerBtn.disabled = true;
+  presetSel.disabled = true;
+  sliders.forEach((s) => (s.disabled = true));
+  status("EQ runs in the desktop app (macOS/Windows). A phone has no system-audio EQ hook.");
+} else {
+  powerBtn.addEventListener("click", () => setPower(!on));
+  presetSel.addEventListener("change", () => setPreset(PRESETS[presetSel.value] ?? PRESETS.flat));
 
-// Sync with the engine in case it was already running (e.g. window reopened).
-invoke<boolean>("eq_running")
-  .then((running) => {
-    on = running;
-    powerBtn.textContent = on ? "ON" : "OFF";
-    powerBtn.classList.toggle("on", on);
-  })
-  .catch(() => {});
+  // Sync with the engine in case it was already running (e.g. window reopened).
+  invoke<boolean>("eq_running")
+    .then((running) => {
+      on = running;
+      powerBtn.textContent = on ? "ON" : "OFF";
+      powerBtn.classList.toggle("on", on);
+    })
+    .catch(() => {});
+}

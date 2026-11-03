@@ -18,9 +18,24 @@ function cycleVis() {
   vis.mode = MODES[(MODES.indexOf(vis.mode) + 1) % MODES.length];
   $("vis-mode").textContent = `VIS: ${MODE_LABEL[vis.mode]}`;
 }
-const openMilkdrop = () => invoke("open_milkdrop");
-const openKaraoke = () => invoke("open_karaoke");
-const openEq = () => invoke("open_eq");
+// Android can't do multiple windows, so on mobile the secondary screens are
+// just other pages in this one webview (Tauri events keep flowing across a
+// navigation). On desktop they stay real windows.
+const isMobile = /Android/i.test(navigator.userAgent);
+
+// The main window is a fixed 550x232 (the classic Winamp size). On a phone,
+// scale it to fill the screen width so it isn't a tiny strip in a sea of black.
+if (isMobile) {
+  document.body.classList.add("mobile");
+  const fit = () => document.documentElement.style.setProperty("--fit", String(window.innerWidth / 550));
+  fit();
+  window.addEventListener("resize", fit);
+  window.addEventListener("orientationchange", fit);
+}
+
+const openMilkdrop = () => (isMobile ? window.location.assign("milkdrop.html") : void invoke("open_milkdrop"));
+const openKaraoke = () => (isMobile ? window.location.assign("karaoke.html") : void invoke("open_karaoke"));
+const openEq = () => (isMobile ? window.location.assign("eq.html") : void invoke("open_eq"));
 const identify = () => invoke("identify_song").catch(() => {});
 
 $("vis").addEventListener("click", cycleVis);
@@ -115,7 +130,19 @@ function onFrame(frame: Frame) {
 const isPlaying = () => (np ? np.playing : hearing);
 const clockSeconds = () => (np ? liveElapsed() : playedMs / 1000);
 
-listen<Frame>("frame", (e) => onFrame(e.payload));
+// Pull one visualizer frame per animation frame (backpressure: at most one
+// request in flight, and the loop pauses when the window is hidden, so frames
+// never pile up the way a 60Hz push did).
+async function framePump() {
+  try {
+    const f = await invoke<Frame | null>("get_frame");
+    if (f) onFrame(f);
+  } catch {
+    // capture not up yet; try again next frame
+  }
+  requestAnimationFrame(framePump);
+}
+requestAnimationFrame(framePump);
 listen<CaptureInfo>("capture-started", (e) => showInfo(e.payload));
 listen<string>("capture-error", (e) => setMarquee(`Capture error: ${e.payload}`));
 listen<NowPlaying>("nowplaying", (e) => onNowPlaying(e.payload));
@@ -143,7 +170,11 @@ const skinState = (): PlayerState => ({
 });
 
 const mediaKey = (key: string) =>
-  invoke("media_key", { key }).catch((e) => setMarquee(`Media key failed: ${e}`));
+  invoke("media_key", { key }).catch(() =>
+    // System media keys are Windows-only; elsewhere (macOS, Android) just say
+    // so briefly instead of parking a scrolling error in the marquee.
+    flash(isMobile ? "Transport control isn't available on the phone" : "Media keys only work on Windows"),
+  );
 
 function onSkinAction(a: Action) {
   switch (a) {
@@ -161,7 +192,7 @@ function onSkinAction(a: Action) {
       return isPlaying() ? mediaKey("playpause") : undefined;
     case "eject":
     case "options":
-      return showSkinMenu();
+      return openSkinMenu();
     case "eq":
       return openEq();
     case "pl":
@@ -346,10 +377,71 @@ async function showSkinMenu() {
   await (await Menu.new({ items })).popup();
 }
 
-$("skin-menu").addEventListener("click", showSkinMenu);
+// Touch devices (Android) have no right-click and native menus don't render,
+// so the menu becomes an in-page sheet — which also doubles as the main nav on
+// a phone (skins + open Milkdrop/Karaoke/EQ/Identify).
+const openSkinMenu = () => (isMobile ? showSkinSheet() : showSkinMenu());
+
+function showSkinSheet() {
+  document.getElementById("skin-sheet")?.remove();
+  const sheet = document.createElement("div");
+  sheet.id = "skin-sheet";
+  const close = () => sheet.remove();
+
+  const row = (label: string, onTap: () => void, checked = false) => {
+    const b = document.createElement("button");
+    b.className = "sheet-row";
+    b.textContent = checked ? `✓ ${label}` : label;
+    b.addEventListener("click", () => {
+      close();
+      onTap();
+    });
+    return b;
+  };
+  const sep = (text: string) => {
+    const d = document.createElement("div");
+    d.className = "sheet-sep";
+    d.textContent = text;
+    return d;
+  };
+
+  const panel = document.createElement("div");
+  panel.className = "sheet-panel";
+  const head = document.createElement("div");
+  head.className = "sheet-head";
+  head.innerHTML = "<span>WinzAMP</span>";
+  const x = document.createElement("button");
+  x.className = "sheet-x";
+  x.textContent = "✕";
+  x.addEventListener("click", close);
+  head.appendChild(x);
+  panel.appendChild(head);
+
+  panel.appendChild(sep("Skins"));
+  panel.appendChild(row("WinzAMP (built-in)", () => void applySkin("default"), currentSkin === "default"));
+  for (const s of MUSEUM_SKINS) {
+    panel.appendChild(row(s.name, () => void applySkin(s.md5), currentSkin === s.md5));
+  }
+  panel.appendChild(row("Load .wsz skin…", () => $("skin-file").click()));
+
+  panel.appendChild(sep("Open"));
+  panel.appendChild(row("Karaoke 🎤", openKaraoke));
+  panel.appendChild(row("Milkdrop 🌀", openMilkdrop));
+  panel.appendChild(row("Equalizer 🎛️", openEq));
+  panel.appendChild(row("Identify song 🎧", identify));
+  panel.appendChild(row("Auto-identify songs", toggleAutoIdentify, autoIdentify));
+
+  sheet.appendChild(panel);
+  sheet.addEventListener("click", (e) => {
+    if (e.target === sheet) close(); // tap the backdrop to dismiss
+  });
+  document.body.appendChild(sheet);
+}
+
+$("skin-menu").addEventListener("click", openSkinMenu);
 window.addEventListener("contextmenu", (e) => {
   e.preventDefault();
-  void showSkinMenu();
+  void openSkinMenu();
 });
 $<HTMLInputElement>("skin-file").addEventListener("change", (e) => {
   const input = e.target as HTMLInputElement;

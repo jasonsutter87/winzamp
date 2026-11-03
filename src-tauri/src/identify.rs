@@ -165,9 +165,27 @@ pub fn identify(app: AppHandle, mono: Vec<f32>, rate: u32, auto: bool) {
             }
             _ if auto => {}
             Ok(None) => status(&app, "nomatch", "No match — try again with the chorus playing."),
-            Err(e) => status(&app, "error", format!("Identify failed: {e}")),
+            Err(e) => status(&app, "error", format!("Identify failed: {}", describe(e))),
         }
     });
+}
+
+/// User-facing error text: drop the request URL (long, opaque, and it
+/// swamped the screen on phones) and keep the cause chain, which is what
+/// actually says why — DNS, TLS, timeout, connection refused, etc.
+fn describe(e: anyhow::Error) -> String {
+    let e = match e.downcast::<reqwest::Error>() {
+        Ok(r) => {
+            let hint = if r.is_timeout() || r.is_connect() {
+                "couldn't reach the song-ID service — check your connection (or VPN). "
+            } else {
+                ""
+            };
+            return format!("{hint}{:#}", anyhow::Error::from(r.without_url()));
+        }
+        Err(e) => e,
+    };
+    format!("{e:#}")
 }
 
 fn run(creds: &Creds, mono: &[f32], rate: u32) -> anyhow::Result<Option<Value>> {

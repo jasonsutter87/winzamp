@@ -45,6 +45,17 @@ async fn open_milkdrop(app: AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Close a window by label. The secondary windows' Back buttons call this:
+/// closing from the Rust side is reliable on mobile, where a child webview's
+/// own JS `close()` handle often no-ops.
+#[tauri::command]
+async fn close_window(app: AppHandle, label: String) -> tauri::Result<()> {
+    if let Some(win) = app.get_webview_window(&label) {
+        win.close()?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn open_eq(app: AppHandle) -> tauri::Result<()> {
     if let Some(win) = app.get_webview_window("eq") {
@@ -72,7 +83,18 @@ fn identify_song(app: AppHandle) -> Result<(), String> {
     let energy: f32 = mono.iter().map(|s| s.abs()).sum::<f32>() / mono.len().max(1) as f32;
     if energy < 0.0005 {
         let message = if energy < 1e-6 {
-            "No audio is reaching WinzAMP. Enable System Audio Recording for WinzAMP in System Settings → Privacy & Security, then relaunch."
+            #[cfg(target_os = "macos")]
+            {
+                "No audio is reaching WinzAMP. Enable System Audio Recording for WinzAMP in System Settings → Privacy & Security, then relaunch."
+            }
+            #[cfg(target_os = "android")]
+            {
+                "No audio from the mic yet — allow microphone access and make sure something's playing."
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "android")))]
+            {
+                "No audio is reaching WinzAMP."
+            }
         } else {
             "It's too quiet to identify — turn it up."
         };
@@ -88,6 +110,13 @@ fn identify_song(app: AppHandle) -> Result<(), String> {
     );
     identify::identify(app, mono, rate, false);
     Ok(())
+}
+
+/// Current visualizer frame, pulled by the frontend once per animation frame.
+/// Replaces a 60Hz push, which could flood a slow/backgrounded WebView.
+#[tauri::command]
+fn get_frame() -> Option<audio::Frame> {
+    audio::current_frame()
 }
 
 /// Press a system media key, so the skin's transport buttons drive whatever
@@ -203,11 +232,13 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             capture_info,
+            get_frame,
             now_playing,
             identify_song,
             open_milkdrop,
             open_karaoke,
             open_eq,
+            close_window,
             media_key,
             autoid::set_auto_identify,
             volume::get_volume,

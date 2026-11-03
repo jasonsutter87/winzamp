@@ -2,7 +2,8 @@
 // Keys: → / space next preset, ← previous, H toggles auto-cycling.
 import butterchurnModule from "butterchurn";
 import butterchurnPresetsModule from "butterchurn-presets";
-import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Frame } from "./frame";
 
 // Both packages are webpack UMD builds of ES modules, so depending on the
@@ -53,6 +54,70 @@ window.addEventListener("keydown", (e) => {
   else if (e.key.toLowerCase() === "h") autoCycle = !autoCycle;
 });
 
+// Touch controls (phone): swipe left/right for next/previous preset, a plain
+// tap for next, a two-finger tap toggles auto-cycle. Keyboard has no meaning on
+// a dash-mounted phone, so this is the only way to drive it there.
+const back = document.getElementById("back")!;
+back.addEventListener("click", () => {
+  // On Android these screens are pages in one webview (multi-window doesn't
+  // work there), so Back navigates home; on desktop, close this window.
+  if (/Android/i.test(navigator.userAgent)) {
+    window.location.assign("index.html");
+    return;
+  }
+  invoke("close_window", { label: getCurrentWindow().label }).catch(() =>
+    getCurrentWindow()
+      .close()
+      .catch(() => history.back()),
+  );
+});
+
+let touchX = 0;
+let touchY = 0;
+let touchMoved = false;
+const canvasEl = canvas;
+canvasEl.addEventListener(
+  "touchstart",
+  (e) => {
+    if (e.touches.length >= 2) {
+      autoCycle = !autoCycle;
+      label.textContent = autoCycle ? "auto-cycle on" : "auto-cycle off";
+      label.classList.add("show");
+      clearTimeout(labelTimer);
+      labelTimer = window.setTimeout(() => label.classList.remove("show"), 1500);
+      return;
+    }
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+    touchMoved = false;
+  },
+  { passive: true },
+);
+canvasEl.addEventListener(
+  "touchend",
+  (e) => {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchX;
+    const dy = t.clientY - touchY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      loadPreset(dx < 0 ? index + 1 : index - 1); // swipe left = next
+    } else if (!touchMoved) {
+      loadPreset(index + 1); // tap = next
+    }
+  },
+  { passive: true },
+);
+canvasEl.addEventListener(
+  "touchmove",
+  (e) => {
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - touchX) > 10 || Math.abs(t.clientY - touchY) > 10) {
+      touchMoved = true;
+    }
+  },
+  { passive: true },
+);
+
 window.addEventListener("resize", () => {
   const { width, height } = devicePx();
   canvas.width = width;
@@ -67,14 +132,18 @@ const latest = {
   timeByteArrayL: new Uint8Array(1024).fill(128),
   timeByteArrayR: new Uint8Array(1024).fill(128),
 };
-listen<Frame>("frame", ({ payload }) => {
-  latest.timeByteArrayL.set(payload.l);
-  latest.timeByteArrayR.set(payload.r);
-  for (let i = 0; i < 1024; i++)
-    latest.timeByteArray[i] = (payload.l[i] + payload.r[i]) >> 1;
-});
-
-function tick() {
+// Pull a frame each render tick (backpressure; no 60Hz push to queue up).
+async function tick() {
+  try {
+    const f = await invoke<Frame | null>("get_frame");
+    if (f) {
+      latest.timeByteArrayL.set(f.l);
+      latest.timeByteArrayR.set(f.r);
+      for (let i = 0; i < 1024; i++) latest.timeByteArray[i] = (f.l[i] + f.r[i]) >> 1;
+    }
+  } catch {
+    // capture not up yet
+  }
   viz.render({ audioLevels: latest });
   requestAnimationFrame(tick);
 }
